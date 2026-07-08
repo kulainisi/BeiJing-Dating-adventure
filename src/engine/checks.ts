@@ -18,6 +18,7 @@ export function performCheck(s: GameState, npc: NpcState | null, def: CheckDef):
   let dc = def.dc
   if (npc) dc += MOODS[npc.mood].dcMod
   if (s.luckyDay) dc -= 2
+  if (s.mood >= 78) dc -= 2 // 气场全开:玩家高心情,检定更易过
   const total = roll + skillVal
   let outcome: CheckResult['outcome']
   if (roll === 20) outcome = 'crit'

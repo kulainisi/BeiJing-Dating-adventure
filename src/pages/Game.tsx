@@ -28,15 +28,26 @@ import {
   tryInvite,
 } from '@/engine/game'
 import { chance } from '@/engine/rng'
-import { applyEffects, fateRoll, isAlive, refillPool } from '@/engine/relations'
-import { bumpMood, moodExtremeRoll, moodHint } from '@/engine/mood'
+import { applyEffects, fateRoll, isAlive, refillPool, relationTier } from '@/engine/relations'
+import { bumpMood, moodAura, moodExtremeRoll, moodHint } from '@/engine/mood'
 import { checkAllBlocked, settle } from '@/engine/endings'
 import { performCheck } from '@/engine/checks'
 import { pick, seedRng } from '@/engine/rng'
 import { addDeath, addRun, clearRun, saveRun, unlockEnding } from '@/engine/save'
 import { findEnding, findEvent, getCharacter, getCharacters, resolveDanmaku } from '@/content'
+import { trackEnding, trackPlay } from '@/analytics'
 import { DanmakuLayer, DanmakuItem } from '@/components/Danmaku'
+import { Celebration } from '@/components/Celebration'
 import { EndingCard } from '@/components/EndingCard'
+
+/** 里程碑 → 全屏庆祝文案 */
+const MILESTONES: Record<string, { title: string; sub: string }> = {
+  favor30: { title: '有点意思了', sub: '好感突破 30 · 关系开始升温' },
+  favor50: { title: '暧昧拉满', sub: '好感突破 50 · 就差捅破那层窗户纸' },
+  confirmed: { title: '在一起了!', sub: '关系确立 · 北京又凑成了一对' },
+  true: { title: '触碰到TA的真心', sub: '你解锁了TA藏得最深的一面' },
+  cohabit: { title: '同居生活开始', sub: '一把钥匙 · 房租减半,风险加倍' },
+}
 
 interface Session {
   script: Script
@@ -79,11 +90,14 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
   const [toast, setToast] = useState('')
   const [favorFloat, setFavorFloat] = useState<{ id: number; text: string; good: boolean } | null>(null)
   const [armFeast, setArmFeast] = useState(false)
+  const [celebration, setCelebration] = useState<{ kind: 'good' | 'bad'; title: string; sub: string } | null>(null)
   const pendingEnding = useRef<{ id: string; npcId?: string; detail?: string } | null>(null)
   const toastTimer = useRef<number>(0)
+  const celebTimer = useRef<number>(0)
 
   useEffect(() => {
     seedRng(((s.seed + s.day * 131 + Date.now()) % 2147483647) >>> 0)
+    if (s.day === 1 && !s.ending) trackPlay(s) // 开局匿名计数
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -115,11 +129,35 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
     window.setTimeout(() => setFavorFloat(null), 1400)
   }
 
+  /** 全屏庆祝/翻车:把游戏已产生的高光/低谷时刻兑现成多巴胺 + 震动 */
+  function fireCelebration(kind: 'good' | 'bad', title: string, sub: string) {
+    setCelebration({ kind, title, sub })
+    try {
+      navigator.vibrate?.(kind === 'good' ? [0, 40, 55, 40] : [0, 120, 50, 120])
+    } catch {
+      /* 不支持震动就算了 */
+    }
+    window.clearTimeout(celebTimer.current)
+    celebTimer.current = window.setTimeout(() => setCelebration(null), 2200)
+  }
+
+  function onMilestone(key: string) {
+    const m = MILESTONES[key]
+    if (!m) return
+    fireCelebration('good', m.title, m.sub)
+    fireDanmaku(['#win'])
+  }
+
   function endGame(id: string, npcId?: string, detail?: string) {
     s.ending = { id, npcId, detail }
+    trackEnding(s, id) // 结局匿名计数
     unlockEnding(id)
     addRun()
     clearRun()
+    // 胜负两端都响:上岸给庆祝,寄了给翻车(社死传播内核不削弱)
+    const def = findEnding(id, s.version)
+    if (def?.rank === 'win') fireCelebration('good', def.title, '🎉 上岸!')
+    else if (def?.rank === 'lose') fireCelebration('bad', def.title, '💔 这局,寄了')
     setPhase({ t: 'ending', id, npcId, detail })
   }
 
@@ -273,6 +311,7 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
 
   // ============ 渲染 ============
   const chars = getCharacters(s.version)
+  const aura = moodAura(s)
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
@@ -283,6 +322,12 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
             ⚡{s.energy}/{s.maxEnergy}
           </span>
           <span className="slot-tag">{s.version === 'male' ? '男版' : '女版'}</span>
+          {aura && (
+            <span className={`aura-chip ${aura.good ? 'good' : 'bad'}`}>
+              {aura.emoji}
+              {aura.label}
+            </span>
+          )}
           <span className="spacer" />
           <span className="awk">
             😅
@@ -366,6 +411,9 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
           onDanmaku={fireDanmaku}
           onNewMatch={(id) => announceMatch(id, 2200)}
           onPendingEnding={(e) => (pendingEnding.current = e)}
+          onMilestone={onMilestone}
+          onSting={(title, sub) => fireCelebration('bad', title, sub)}
+          onPraise={pushDanmaku}
           onFinish={() => finishSession(phase.sess)}
           force={force}
         />
@@ -377,6 +425,9 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
 
       <DanmakuLayer items={danmaku} />
       {toast && <div className="toast">{toast}</div>}
+      {celebration && (
+        <Celebration kind={celebration.kind} title={celebration.title} sub={celebration.sub} />
+      )}
     </div>
   )
 }
@@ -537,7 +588,12 @@ function NpcList({
               <div className="info">
                 <div className="name">
                   {c.name}
-                  {n.stage === 'confirmed' && <span style={{ fontSize: 11, color: 'var(--accent)' }}>❤️ 已确立</span>}
+                  {!dead && (
+                    <span className="tier-chip">
+                      {relationTier(n).emoji}
+                      {relationTier(n).name}
+                    </span>
+                  )}
                   {hiddenReady && <span style={{ fontSize: 12 }}>✨</span>}
                   {!dead && n.mood !== 'normal' && canMind && (
                     <span className="mood-chip">
@@ -677,6 +733,9 @@ interface SessionViewProps {
   onDanmaku: (keys?: string[]) => void
   onNewMatch: (id: string) => void
   onPendingEnding: (e: { id: string; npcId?: string; detail?: string }) => void
+  onMilestone: (key: string) => void
+  onSting: (title: string, sub: string) => void
+  onPraise: (text: string) => void
   onFinish: () => void
   force: () => void
 }
@@ -688,7 +747,19 @@ interface LogLine {
 
 let logKey = 0
 
-function SessionView({ s, sess, onFavor, onDanmaku, onNewMatch, onPendingEnding, onFinish, force }: SessionViewProps) {
+function SessionView({
+  s,
+  sess,
+  onFavor,
+  onDanmaku,
+  onNewMatch,
+  onPendingEnding,
+  onMilestone,
+  onSting,
+  onPraise,
+  onFinish,
+  force,
+}: SessionViewProps) {
   const { script } = sess
   const npc: NpcState | null = sess.npcId ? s.npcs[sess.npcId] : null
   const profile: CharacterProfile | null = sess.npcId ? getCharacter(s.version, sess.npcId) : null
@@ -696,6 +767,7 @@ function SessionView({ s, sess, onFavor, onDanmaku, onNewMatch, onPendingEnding,
   const [nodeId, setNodeId] = useState(script.start)
   const [log, setLog] = useState<LogLine[]>([])
   const [revealed, setRevealed] = useState(0)
+  const [combo, setCombo] = useState(0)
   const revealRef = useRef(0)
   const [typing, setTyping] = useState(false)
   const typingRef = useRef(false)
@@ -713,7 +785,11 @@ function SessionView({ s, sess, onFavor, onDanmaku, onNewMatch, onPendingEnding,
     if (node.effects) {
       const fb = applyEffects(s, npc, profile, node.effects)
       onFavor(fb.favorDelta)
-      if (fb.blocked) addDeath(fb.blocked)
+      if (fb.milestone) onMilestone(fb.milestone)
+      if (fb.blocked) {
+        addDeath(fb.blocked)
+        onSting('被拉黑了', fb.blocked)
+      }
       if (fb.newMatch) onNewMatch(fb.newMatch)
       if (fb.ended) onPendingEnding({ id: fb.ended, npcId: sess.npcId ?? undefined })
       force()
@@ -804,17 +880,34 @@ function SessionView({ s, sess, onFavor, onDanmaku, onNewMatch, onPendingEnding,
       onFavor(fb.favorDelta)
       if (fb.tasteLine) appendLine({ who: 'nar', text: fb.tasteLine })
       if (fb.banHit && fb.banHit.first) appendLine({ who: 'nar', text: '……不知道为什么,TA的回复突然变得敷衍了。' })
+      if (fb.milestone) onMilestone(fb.milestone)
       if (fb.ended) onPendingEnding({ id: fb.ended, npcId: sess.npcId ?? undefined })
       if (fb.newMatch) onNewMatch(fb.newMatch)
       if (fb.blocked) {
         blocked = fb.blocked
         addDeath(fb.blocked)
       }
+      // 默契连击:答对累积,踩雷/负分归零;连击≥2 给递进夸奖 + 封顶额外好感
+      if (fb.banHit || c.effects.mine || fb.favorDelta < 0) {
+        setCombo(0)
+      } else if (fb.favorDelta > 0) {
+        const nc = combo + 1
+        setCombo(nc)
+        if (nc >= 2) {
+          onPraise(`🔥x${nc} ${nc >= 4 ? '灵魂共振!' : nc >= 3 ? '默契 +1' : '懂你'}`)
+          if (npc) {
+            const bonus = Math.min(nc - 1, 3)
+            npc.favor = Math.min(100, npc.favor + bonus)
+            onFavor(bonus)
+          }
+        }
+      }
       force()
     }
 
     // 选项级拉黑(观点死穴、语言雷点二连等):插入告别台词并终止
     if (blocked) {
+      onSting('被拉黑了', blocked)
       showBlockAndEnd(blocked)
       return
     }
@@ -853,6 +946,11 @@ function SessionView({ s, sess, onFavor, onDanmaku, onNewMatch, onPendingEnding,
 
   return (
     <>
+      {combo >= 2 && (
+        <div className="combo-chip" key={combo}>
+          🔥 连击 x{combo}
+        </div>
+      )}
       {script.kind !== 'chat' && bg && (
         <div className="scene-head" style={{ background: bg.grad }}>
           <div className="loc">📍 {script.location ?? '北京'}</div>
@@ -866,7 +964,13 @@ function SessionView({ s, sess, onFavor, onDanmaku, onNewMatch, onPendingEnding,
             {profile.emoji}
           </div>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700 }}>{profile.name}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+              {profile.name}
+              <span className="tier-chip">
+                {relationTier(npc).emoji}
+                {relationTier(npc).name}
+              </span>
+            </div>
             <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>
               💗 {npc.favor}/100
               {s.skills.mind >= 6 && npc.mood !== 'normal' ? ` · ${MOODS[npc.mood].emoji}${MOODS[npc.mood].name}` : ''}

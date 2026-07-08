@@ -1,0 +1,22 @@
+# Cloudflare Pages + Functions 配置(数据监控用)。
+# 站点本身仍由 Pages 的 Git 集成自动构建部署;此文件用于本地 `wrangler pages dev`
+# 以及 Functions 的 KV 绑定。
+#
+# 部署前置(作者手动一次):
+#   1) 创建 KV:   wrangler kv namespace create STATS
+#      把返回的 id 填到下面 [[kv_namespaces]].id
+#   2) 也可在 Pages 控制台 Settings → Functions → KV namespace bindings 里绑定(变量名 STATS)
+#   3) 看板令牌:  wrangler pages secret put STATS_KEY   (或用下面 [vars] 里的默认值,记得改)
+#   4) 本地验证:  wrangler pages dev  然后 POST /api/track、GET /api/stats?key=...
+
+name = "beijing-dating-adventure"
+compatibility_date = "2024-11-01"
+pages_build_output_dir = "dist"
+
+[[kv_namespaces]]
+binding = "STATS"
+id = "<在此填入 wrangler kv namespace create STATS 返回的 id>"
+
+# 作者看板令牌(GET /api/stats?key=...)。生产建议用 `wrangler pages secret put STATS_KEY` 覆盖。
+[vars]
+STATS_KEY = "change-me-please"

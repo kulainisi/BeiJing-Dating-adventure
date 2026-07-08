@@ -77,12 +77,27 @@ export interface EffectFeedback {
   confirmed?: boolean
   /** 名额释放后随机补位进来的新角色 id */
   newMatch?: string
+  /** 触发的关系里程碑(好感越线/确立/真心/同居),供 UI 放全屏庆祝;每种每人只发一次 */
+  milestone?: string
 }
 
 const aliveStages = ['chatting', 'dating', 'confirmed']
 
 export function isAlive(n: NpcState) {
   return aliveStages.includes(n.stage)
+}
+
+/** 关系阶梯(把好感/阶段翻成"看得见在往上爬"的等级名) */
+export function relationTier(n: NpcState): { name: string; emoji: string } {
+  if (n.stage === 'confirmed') {
+    return n.flags.includes('cohabit')
+      ? { name: '同居', emoji: '🏠' }
+      : { name: '在一起', emoji: '❤️' }
+  }
+  if (n.favor >= 65) return { name: '心动', emoji: '💓' }
+  if (n.favor >= 45) return { name: '暧昧', emoji: '💗' }
+  if (n.favor >= 25) return { name: '有点意思', emoji: '🙂' }
+  return { name: '陌生人', emoji: '👤' }
 }
 
 /** 钱包统一扣款口:任何时刻钱归零就寄 */
@@ -119,6 +134,8 @@ export function applyEffects(
   if (npc && fx.care && npc.mood === 'slacking' && favor > 0) favor *= 2
   // 心情爆好:好感收益 +2
   if (npc && npc.mood === 'great' && favor > 0) favor += 2
+  // 玩家气场全开(高心情):正好感再 +1,制造"越顺越顺"的滚雪球
+  if (s.mood >= 78 && favor > 0) favor += 1
 
   // 口味怪癖
   if (npc && fx.taste) {
@@ -147,10 +164,24 @@ export function applyEffects(
   }
 
   if (npc) {
+    const prevFavor = npc.favor
     npc.favor = Math.max(0, Math.min(100, npc.favor + favor))
     fb.favorDelta = favor
     if (favor >= 8) bumpMood(s, 5)
     if (fx.npcFlags) for (const f of fx.npcFlags) if (!npc.flags.includes(f)) npc.flags.push(f)
+    // 里程碑:好感首次越线 / 触碰真心(用 ms:* flag 去重,每种每人只发一次)
+    const crossed = (line: number, key: string) =>
+      prevFavor < line && npc.favor >= line && !npc.flags.includes(`ms:${key}`)
+    if (profile && fx.npcFlags?.includes(profile.trueFlag) && !npc.flags.includes('ms:true')) {
+      npc.flags.push('ms:true')
+      fb.milestone = 'true'
+    } else if (crossed(50, 'favor50')) {
+      npc.flags.push('ms:favor50')
+      fb.milestone = 'favor50'
+    } else if (crossed(30, 'favor30')) {
+      npc.flags.push('ms:favor30')
+      fb.milestone = 'favor30'
+    }
   }
 
   if (fx.mine) {
@@ -172,6 +203,7 @@ export function applyEffects(
   if (fx.awkward) s.awkward = Math.max(0, s.awkward + fx.awkward)
   if (fx.drink) s.stats.drinks += fx.drink
   if (fx.flags) for (const f of fx.flags) if (!s.flags.includes(f)) s.flags.push(f)
+  if (fx.flags?.includes('cohabiting')) fb.milestone = 'cohabit' // 同居里程碑(覆盖好感越线)
 
   if (npc && fx.block && !fb.blocked) {
     fb.newMatch = blockNpc(s, npc, profile, fx.block) ?? undefined
@@ -192,6 +224,7 @@ export function applyEffects(
     npc.stage = 'confirmed'
     fb.confirmed = true
     bumpMood(s, 15)
+    fb.milestone = 'confirmed' // 确立里程碑(优先级最高,覆盖前面的好感/真心)
   }
 
   if (fx.endGame) fb.ended = fx.endGame

@@ -47,6 +47,10 @@ npm run check-story  # ★ 内容校验:任何剧情改动后必跑,抓断头节
 - 剧本 DSL 与新增角色/事件/看法题的详细步骤见 README.md「内容更新指南」
 - 中文文案用直角引号「」,不要在单引号字符串里嵌套中文单引号(会破坏TS语法)
 - 版权红线:平台名一律戏仿(微聊/小蓝书/心动Beijing),不用真实logo,美术只用 SVG/CSS/emoji
+- 正反馈/手感层(v3 首批):关系里程碑全屏庆祝(Celebration.tsx,好感越 30/50、确立、真心、同居,
+  applyEffects 返回 fb.milestone,ms:* flag 去重)+ 关系阶梯 chip(relationTier)+ 默契连击(SessionView 内
+  combo,答对累积、踩雷归零)+ 心情两极外显(moodAura,≥78「气场全开」给检定 DC-2,≤22「状态低迷」);
+  加班扣心情、极端负面暗骰概率下调。原则:胜负两端都响,不砍社死负反馈。开局并聊上限提到 3(parallelCap)。
 
 ## 部署与安全
 
@@ -54,5 +58,9 @@ npm run check-story  # ★ 内容校验:任何剧情改动后必跑,抓断头节
   正确流程:改动 → check-story → build 验证 → 本地 commit → 向用户汇报改了什么 → 等用户确认后才推送。
   (`.claude/settings.json` 已配置 `git push` 强制弹出确认,属双保险,勿删)
 - `public/_headers` 是 CSP 等安全响应头,勿删
-- 无后端、无用户数据;如未来加排行榜/账号,用 Cloudflare Workers + D1,不要自建服务器
+- 匿名数据监控:`functions/api/track.ts`(POST 计数)+ `functions/api/stats.ts`(GET 看板,?key= 令牌)
+  = Cloudflare Pages Functions,同源无跨域;`src/analytics.ts` 在开局/结局 sendBeacon 上报,失败静默。
+  只累加聚合计数(KV namespace `STATS`),无 cookie/无 PII。**部署前需绑定 KV**(见 wrangler.toml 注释)。
+  本地 `npm run dev` 下 /api/* 返回 404 属正常(Vite 无 Functions),需 `wrangler pages dev` 或线上才生效。
+- 除上面的匿名计数外无后端、无用户数据;如未来加排行榜/账号,用 Cloudflare Workers/Pages Functions + D1,不要自建服务器
 - 本机 git 代理已设为 http://127.0.0.1:10809(v2rayN);GitHub 访问失败先查代理是否在跑

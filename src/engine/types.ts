@@ -145,9 +145,9 @@ export const ENERGY_COST = { chat: 1, date: 2, work: 2 }
 /** 排面基础值 */
 export const PAIMIAN_BASE = 2
 
-/** 并聊上限 = 精力换算 */
+/** 并聊上限 = 精力换算(普通北漂精力4→3人;高精力宝宝精力8→4人封顶;钞能力精力3→2人) */
 export function parallelCap(maxEnergy: number): number {
-  return Math.max(1, Math.min(4, Math.round(maxEnergy / 2)))
+  return Math.max(1, Math.min(4, Math.floor(maxEnergy / 2) + 1))
 }
 
 export const MOODS: Record<MoodId, { name: string; emoji: string; hint: string; dcMod: number }> = {

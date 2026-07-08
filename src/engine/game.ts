@@ -179,6 +179,7 @@ export function doWork(s: GameState): string {
   const gain = Math.round((s.salary / 22) * 1.5)
   s.wallet += gain
   spendEnergy(s, ENERGY_COST.work)
+  bumpMood(s, -6) // 搞钱不是零成本:加班太多会内耗心情(喂给「气场」雪球的另一面)
   for (const npc of Object.values(s.npcs)) {
     if (isAlive(npc) && npc.stage !== 'confirmed') npc.favor = Math.max(0, npc.favor - 2)
   }
