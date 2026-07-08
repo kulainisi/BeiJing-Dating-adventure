@@ -19,6 +19,11 @@ export function moodExtremeRoll(s: GameState): 'euphoria' | 'emo_quit' | null {
   return null
 }
 
+/** 确定性抑郁判负:心情跌破硬地板(比随机 emo_quit 更低),直接判负,平衡无脑加班搬钱 */
+export function moodDepressed(s: GameState): boolean {
+  return s.mood <= 3
+}
+
 /** HUD 心情氛围:仅在两极外显(暗骰原则,中间隐藏) */
 export function moodAura(s: GameState): { emoji: string; label: string; good: boolean } | null {
   if (s.mood >= 78) return { emoji: '⚡', label: '气场全开', good: true }

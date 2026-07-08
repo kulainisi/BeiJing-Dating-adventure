@@ -57,6 +57,16 @@ function genGlobal(version: Version): EndingDef[] {
     hint: '心情跌到谷底的时候,人是会突然想通的',
   },
   {
+    id: 'depression',
+    rank: 'lose',
+    title: '把自己熬没了',
+    stars: 0,
+    badge: '内耗届劳模',
+    comment:
+      '加班、搬钱、透支,你把自己当成一台永动机,直到某天早上,你怎么也没法从床上坐起来。医生说这叫「中度抑郁」,建议先停下来。恋爱可以等,KPI可以等,但你的人,等不了。这一局,你输给了自己。',
+    hint: '心情长期被榨干(加班太多),身体会替你按下停止键',
+  },
+  {
     id: 'goodcard',
     rank: 'draw',
     title: '北京市好人卡收藏家',

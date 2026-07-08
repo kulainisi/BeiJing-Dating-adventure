@@ -27,7 +27,7 @@ import {
 } from '@/engine/game'
 import { chance } from '@/engine/rng'
 import { applyEffects, fateRoll, isAlive, refillPool, relationTier } from '@/engine/relations'
-import { bumpMood, moodAura, moodExtremeRoll, moodHint } from '@/engine/mood'
+import { bumpMood, moodAura, moodDepressed, moodExtremeRoll, moodHint } from '@/engine/mood'
 import { checkAllBlocked, settle } from '@/engine/endings'
 import { performCheck } from '@/engine/checks'
 import { pick, seedRng } from '@/engine/rng'
@@ -200,6 +200,7 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
 
   /** 回到行动中心;精力耗尽则自动入夜 */
   function backToHub() {
+    if (moodDepressed(s)) return endGame('depression') // 加班内耗到底:确定性抑郁判负
     if (checkAllBlocked(s)) return endGame('all_blocked')
     if (s.wallet <= 0) return endGame('bankrupt')
     if (s.energy <= 0) {
