@@ -8,17 +8,20 @@ type KV = {
 }
 interface Env {
   STATS?: KV
+  stats?: KV
   STATS_KEY?: string
+  stats_key?: string
 }
 
 export const onRequestGet = async (context: { request: Request; env: Env }): Promise<Response> => {
   const url = new URL(context.request.url)
   const key = url.searchParams.get('key')
-  if (key !== (context.env.STATS_KEY || 'change-me-please')) {
+  const expected = context.env.STATS_KEY ?? context.env.stats_key ?? 'change-me-please'
+  if (key !== expected) {
     return new Response('unauthorized', { status: 401 })
   }
-  const kv = context.env.STATS
-  if (!kv) return Response.json({ error: '尚未绑定 KV namespace(STATS)' })
+  const kv = context.env.STATS ?? context.env.stats // 绑定名大小写都认
+  if (!kv) return Response.json({ error: '尚未绑定 KV namespace(变量名 STATS)' })
 
   const list = await kv.list({ prefix: 'count:' })
   const out: Record<string, number> = {}

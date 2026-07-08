@@ -11,6 +11,7 @@ type KV = {
 }
 interface Env {
   STATS?: KV
+  stats?: KV
 }
 
 const KNOWN_GLOBAL = new Set([
@@ -33,7 +34,7 @@ async function inc(kv: KV, key: string) {
 
 export const onRequestPost = async (context: { request: Request; env: Env }): Promise<Response> => {
   try {
-    const kv = context.env.STATS
+    const kv = context.env.STATS ?? context.env.stats // 绑定名大小写都认
     if (!kv) return new Response('ok') // 未绑定 KV:静默
     const data = (await context.request.json()) as Record<string, unknown>
     const v = data.v === 'female' ? 'female' : 'male'
