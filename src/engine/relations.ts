@@ -87,6 +87,18 @@ export function isAlive(n: NpcState) {
   return aliveStages.includes(n.stage)
 }
 
+/**
+ * 排面(image)由资产分档决定,取代原来"行头临时买排面":
+ * 月光族撑不起场面,钞能力天然满排面。检定时实时按当前钱包读取。
+ */
+export function imageFromWallet(wallet: number): number {
+  if (wallet >= 500000) return 6
+  if (wallet >= 100000) return 5
+  if (wallet >= 20000) return 4
+  if (wallet >= 5000) return 3
+  return 2
+}
+
 /** 关系阶梯(把好感/阶段翻成"看得见在往上爬"的等级名) */
 export function relationTier(n: NpcState): { name: string; emoji: string } {
   if (n.stage === 'confirmed') {

@@ -9,7 +9,6 @@ import {
   NodeDef,
   NpcState,
   ORIGINS,
-  OUTFITS,
   Script,
   SKILL_DISPLAY,
   TOTAL_DAYS,
@@ -22,7 +21,6 @@ import {
   doWork,
   liquorHint,
   marriageRoll,
-  resetOutfit,
   sleep,
   touchNpc,
   tryInvite,
@@ -59,7 +57,6 @@ type Phase =
   | { t: 'hub' }
   | { t: 'list'; mode: 'chat' | 'date' }
   | { t: 'spot'; npcId: string }
-  | { t: 'outfit'; npcId: string; spotIdx: number }
   | { t: 'session'; sess: Session }
   | { t: 'ending'; id: string; npcId?: string; detail?: string }
 
@@ -219,8 +216,6 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
     let ended = pendingEnding.current
     pendingEnding.current = null
 
-    if (sess.type === 'date') resetOutfit(s)
-
     if (sess.npcId && sess.type !== 'event') {
       touchNpc(s, sess.npcId)
       const npcSt = s.npcs[sess.npcId]
@@ -292,7 +287,7 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
     setPhase({ t: 'session', sess: { script: sc, npcId: profile.id, type: 'chat' } })
   }
 
-  function startDate(profile: CharacterProfile, spotIdx: number, outfitIdx: number) {
+  function startDate(profile: CharacterProfile, spotIdx: number) {
     const spot = profile.dateSpots[spotIdx]
     const inv = tryInvite(s, profile, spot)
     if (!inv.accepted) {
@@ -302,7 +297,7 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
       return
     }
     showToast(inv.line)
-    const sc = buildDateSession(s, profile, spot, outfitIdx)
+    const sc = buildDateSession(s, profile, spot)
     if (s.wallet <= 0) return endGame('bankrupt')
     saveRun(s)
     setPhase({ t: 'session', sess: { script: sc, npcId: profile.id, type: 'date' } })
@@ -388,17 +383,7 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
           s={s}
           profile={getCharacter(s.version, phase.npcId)}
           onBack={() => setPhase({ t: 'list', mode: 'date' })}
-          onPick={(idx) => setPhase({ t: 'outfit', npcId: phase.npcId, spotIdx: idx })}
-        />
-      )}
-
-      {phase.t === 'outfit' && (
-        <OutfitPick
-          s={s}
-          profile={getCharacter(s.version, phase.npcId)}
-          spotIdx={phase.spotIdx}
-          onBack={() => setPhase({ t: 'spot', npcId: phase.npcId })}
-          onPick={(outfitIdx) => startDate(getCharacter(s.version, phase.npcId), phase.spotIdx, outfitIdx)}
+          onPick={(idx) => startDate(getCharacter(s.version, phase.npcId), idx)}
         />
       )}
 
@@ -668,59 +653,6 @@ function SpotPick({
       <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 12 }}>
         价格为两人消费。约完钱包会变成 0 的地方,系统替你划掉了——钱归零就寄。
       </p>
-    </div>
-  )
-}
-
-// ============ 行头选择(钱抬排面) ============
-function OutfitPick({
-  s,
-  profile,
-  spotIdx,
-  onBack,
-  onPick,
-}: {
-  s: GameState
-  profile: CharacterProfile
-  spotIdx: number
-  onBack: () => void
-  onPick: (outfitIdx: number) => void
-}) {
-  const spot = profile.dateSpots[spotIdx]
-  return (
-    <div className="scroll fade-in" style={{ padding: '12px 14px 24px' }}>
-      <button className="btn ghost" style={{ width: 'auto', padding: '4px 0', fontSize: 14 }} onClick={onBack}>
-        ← 返回
-      </button>
-      <h3 style={{ fontSize: 17, fontWeight: 800, margin: '4px 0 4px' }}>出发前,拾掇一下?</h3>
-      <p style={{ fontSize: 12.5, color: 'var(--text-dim)', marginBottom: 12 }}>
-        📍 {spot.label}(¥{spot.price}) · 余额 ¥{s.wallet}
-        <br />
-        行头临时抬高「排面」,只对这次约会生效。
-      </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-        {OUTFITS.map((o, i) => {
-          const total = spot.price + o.cost
-          const cant = s.wallet - total <= 0
-          return (
-            <button key={i} className="npc-card" disabled={cant} onClick={() => onPick(i)} style={{ opacity: cant ? 0.45 : 1 }}>
-              <div className="big-avatar" style={{ background: 'var(--panel2)' }}>
-                {i === 0 ? '🧢' : i === 1 ? '👔' : '🤵'}
-              </div>
-              <div className="info">
-                <div className="name">
-                  {o.name}
-                  {o.bonus > 0 && <span style={{ fontSize: 11, color: 'var(--accent2)' }}> 排面+{o.bonus}</span>}
-                </div>
-                <div className="sub">{o.desc}</div>
-              </div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: cant ? 'var(--red)' : 'var(--accent2)' }}>
-                {o.cost > 0 ? `¥${o.cost}` : '免费'}
-              </div>
-            </button>
-          )
-        })}
-      </div>
     </div>
   )
 }

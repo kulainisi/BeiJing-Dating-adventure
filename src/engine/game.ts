@@ -1,5 +1,5 @@
 import { chance, pick, rand, seedRng, weighted } from './rng'
-import { chargeWallet, dailyDecay, DecayNews, genQuirks, isAlive, rollMood, updateParallel } from './relations'
+import { chargeWallet, dailyDecay, DecayNews, genQuirks, imageFromWallet, isAlive, rollMood, updateParallel } from './relations'
 import { bumpMood, moodDrift } from './mood'
 import {
   CharacterProfile,
@@ -14,8 +14,6 @@ import {
   NpcState,
   OpinionQ,
   ORIGINS,
-  OUTFITS,
-  PAIMIAN_BASE,
   parallelCap,
   Script,
   TOTAL_DAYS,
@@ -84,7 +82,6 @@ export function newGame(version: Version, edu: EduId, seed?: number): GameState 
     origin: origin.id,
     edu,
     hiddenLiquor,
-    outfit: 0,
     rent: origin.rent,
     salary,
     skills: {
@@ -92,7 +89,7 @@ export function newGame(version: Version, edu: EduId, seed?: number): GameState 
       mind: eduT.culture,
       culture: eduT.culture,
       liquor: hiddenLiquor,
-      image: PAIMIAN_BASE,
+      image: imageFromWallet(wallet),
       money: origin.id === 'rich' ? 8 : 3,
     },
     wallet,
@@ -117,6 +114,7 @@ export function newGame(version: Version, edu: EduId, seed?: number): GameState 
     },
     eventDone: [],
     luckyDay: false,
+    usedShared: [],
   }
 }
 
@@ -206,6 +204,7 @@ function withMoodOpener(sc: Script, profile: CharacterProfile, npc: NpcState): S
 
 export function buildChatSession(s: GameState, profile: CharacterProfile): Script {
   const npc = s.npcs[profile.id]
+  s.usedShared ??= [] // 兼容老存档
   spendEnergy(s, ENERGY_COST.chat)
 
   // 1. 初次聊天
@@ -222,11 +221,11 @@ export function buildChatSession(s: GameState, profile: CharacterProfile): Scrip
     }
   }
 
-  // 3. 擦边池(SFW):按角色 spicy 系数概率插入
-  const spicyPool = getSpicyChats().filter((c) => !npc.usedGeneric.includes(c.id))
+  // 3. 擦边池(SFW):按角色 spicy 系数概率插入(共有池,整局全局仅一次)
+  const spicyPool = getSpicyChats().filter((c) => !s.usedShared.includes(c.id))
   if (spicyPool.length > 0 && npc.favor >= 40 && chance(profile.spicy ?? 0.1)) {
     const sc = pick(spicyPool)
-    npc.usedGeneric.push(sc.id)
+    s.usedShared.push(sc.id)
     return withMoodOpener(cloneScript(sc), profile, npc)
   }
 
@@ -249,10 +248,10 @@ export function buildChatSession(s: GameState, profile: CharacterProfile): Scrip
     return withMoodOpener(cloneScript(sc), profile, npc)
   }
 
-  // 5. 话题池耗尽:公用闲聊(避免重复)
-  const gPool = getGenericChats().filter((c) => !npc.usedGeneric.includes(c.id))
+  // 5. 话题池耗尽:公用闲聊(共有池,整局全局仅一次;抽干才允许重复兜底)
+  const gPool = getGenericChats().filter((c) => !s.usedShared.includes(c.id))
   const g = gPool.length > 0 ? pick(gPool) : pick(getGenericChats())
-  npc.usedGeneric.push(g.id)
+  s.usedShared.push(g.id)
   return withMoodOpener(cloneScript(g), profile, npc)
 }
 
@@ -347,30 +346,23 @@ export function tryInvite(s: GameState, profile: CharacterProfile, spot: DateSpo
   return { accepted: true, line: '「行啊,那到时候见。」' }
 }
 
-/** 构建约会剧本:扣钱+行头结算+场景模板+表白注入。outfitIdx 对应 OUTFITS 下标 */
-export function buildDateSession(
-  s: GameState,
-  profile: CharacterProfile,
-  spot: DateSpot,
-  outfitIdx: number,
-): Script {
+/** 构建约会剧本:扣钱+场景模板+表白注入(排面由资产决定,不再有行头) */
+export function buildDateSession(s: GameState, profile: CharacterProfile, spot: DateSpot): Script {
   const npc = s.npcs[profile.id]
-  const outfit = OUTFITS[outfitIdx] ?? OUTFITS[0]
+  s.usedShared ??= []
   if (npc.stage === 'chatting') npc.stage = 'dating'
   npc.dates++
   spendEnergy(s, ENERGY_COST.date)
-  chargeWallet(s, spot.price + outfit.cost) // UI 侧已保证不会当场归零;真归零走 bankrupt
-
-  // 行头:临时排面 + 初见加成
-  s.outfit = outfit.bonus
-  s.skills.image = PAIMIAN_BASE + outfit.bonus
-  if (outfit.bonus > 0) npc.favor = Math.min(100, npc.favor + outfit.bonus)
+  chargeWallet(s, spot.price) // UI 侧已保证不会当场归零;真归零走 bankrupt
 
   const sc = getTemplate(spot.template)(profile, npc, s, spot)
 
-  // 随机注入一条公用约会小插曲(约40%)
+  // 随机注入一条公用约会小插曲(约40%,共有池整局仅一次)
   if (chance(0.4)) {
-    const il = cloneScript(pick(getInterludes()))
+    const ilPool = getInterludes().filter((c) => !s.usedShared.includes(c.id))
+    const ilBase = ilPool.length > 0 ? pick(ilPool) : pick(getInterludes())
+    s.usedShared.push(ilBase.id)
+    const il = cloneScript(ilBase)
     for (const nd of Object.values(il.nodes)) {
       if (nd.next === '@start') nd.next = sc.start
     }
@@ -388,12 +380,6 @@ export function buildDateSession(
     Object.assign(sc.nodes, confirmNodes(profile))
   }
   return sc
-}
-
-/** 约会结束后复位行头 */
-export function resetOutfit(s: GameState) {
-  s.outfit = 0
-  s.skills.image = PAIMIAN_BASE
 }
 
 /** 当前同居对象(仅在还活跃时返回) */

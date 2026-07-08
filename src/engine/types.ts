@@ -132,17 +132,10 @@ export const ORIGINS: Origin[] = [
 /** 每日吃喝通勤基础开销 */
 export const DAILY_FOOD = 80
 
-/** 约会行头(临时抬排面,仅当次约会生效) */
-export const OUTFITS: { name: string; cost: number; bonus: number; desc: string }[] = [
-  { name: '素颜赴约', cost: 0, bonus: 0, desc: '真实,省钱,听天由命' },
-  { name: '拾掇一下', cost: 300, bonus: 2, desc: '新衬衫+理发+打车,排面+2' },
-  { name: '全套战袍', cost: 1200, bonus: 4, desc: 'SKP级武装到手表,排面+4' },
-]
-
 /** 行动精力消耗 */
 export const ENERGY_COST = { chat: 1, date: 2, work: 2 }
 
-/** 排面基础值 */
+/** 排面基础值(月光族下限;实际排面由资产分档 imageFromWallet 决定) */
 export const PAIMIAN_BASE = 2
 
 /** 并聊上限 = 精力换算(普通北漂精力4→3人;高精力宝宝精力8→4人封顶;钞能力精力3→2人) */
@@ -330,8 +323,6 @@ export interface GameState {
   edu: EduId
   /** 隐藏酒量 1-10,不展示 */
   hiddenLiquor: number
-  /** 当次约会行头加成(排面 = PAIMIAN_BASE + outfit) */
-  outfit: number
   rent: number
   salary: number
   skills: Record<SkillId, number>
@@ -345,6 +336,8 @@ export interface GameState {
   eventDone: string[]
   luckyDay: boolean
   pendingEvent?: string
+  /** 共有池(generic/spicy/interlude)整局全局已用脚本 id,保证每条只出现一次 */
+  usedShared: string[]
 }
 
 // ============ 结局 ============

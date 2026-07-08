@@ -1,5 +1,6 @@
 import { rollD20 } from './rng'
 import { bumpMood } from './mood'
+import { imageFromWallet } from './relations'
 import { CheckDef, GameState, MOODS, NpcState } from './types'
 
 export interface CheckResult {
@@ -14,7 +15,8 @@ export interface CheckResult {
 /** d20 + 技能 vs 难度;骰 20 大成功、骰 1 大失败;NPC 情绪与锦鲤日修正 DC */
 export function performCheck(s: GameState, npc: NpcState | null, def: CheckDef): CheckResult {
   const roll = rollD20()
-  const skillVal = s.skills[def.skill]
+  // 排面(image)实时按资产读取,取代行头;其余属性照常
+  const skillVal = def.skill === 'image' ? imageFromWallet(s.wallet) : s.skills[def.skill]
   let dc = def.dc
   if (npc) dc += MOODS[npc.mood].dcMod
   if (s.luckyDay) dc -= 2
