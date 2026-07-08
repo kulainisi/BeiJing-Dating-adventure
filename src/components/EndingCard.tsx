@@ -100,7 +100,7 @@ export function EndingCard({ ending, state, npcName, detail, onRestart, onGaller
     g.fillText('📱 扫码进入游戏,来北京Dating', 360, 1200)
     g.fillStyle = '#5b6b80'
     g.font = '20px sans-serif'
-    g.fillText('《北京Dating模拟器》· 一款人均社死的恋爱冒险', 360, 1230)
+    g.fillText('《北京Dating模拟器》v2 · 一款人均社死的恋爱冒险', 360, 1230)
 
     return c
   }
