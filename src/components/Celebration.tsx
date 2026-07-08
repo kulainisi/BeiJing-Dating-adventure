@@ -1,23 +1,28 @@
 import { useMemo } from 'react'
 
 /**
- * 全屏里程碑庆祝 / 翻车时刻。纯表现层,pointer-events 关闭,不拦交互。
+ * 全屏里程碑庆祝 / 成就 / 翻车时刻。纯表现层,pointer-events 关闭,不拦交互。
  * 由 Game.tsx 用 setTimeout 控制显隐(~2.2s 自动消失)。
- * - good:好感越线/确立/真心/同居/上岸 → 爱心迸发 + 称号横幅
- * - bad :拉黑/社死/寄了 → 红闪碎裂 + 丧气弹幕感
+ * - good   :好感越线/确立/真心/同居/上岸 → 爱心迸发 + 称号横幅
+ * - achieve:局中解锁成就 → 金色奖章迸发
+ * - bad    :拉黑/社死/寄了 → 红闪碎裂 + 丧气弹幕感
  */
 export function Celebration({
   kind,
   title,
   sub,
 }: {
-  kind: 'good' | 'bad'
+  kind: 'good' | 'bad' | 'achieve'
   title: string
   sub: string
 }) {
-  const good = kind === 'good'
   const parts = useMemo(() => {
-    const set = good ? ['💗', '💖', '✨', '🎉', '💘', '⭐', '🌸'] : ['💔', '🥀', '😭', '⚡', '🖤']
+    const set =
+      kind === 'achieve'
+        ? ['🏅', '⭐', '✨', '🎖️', '🌟', '👑']
+        : kind === 'good'
+          ? ['💗', '💖', '✨', '🎉', '💘', '⭐', '🌸']
+          : ['💔', '🥀', '😭', '⚡', '🖤']
     return Array.from({ length: 18 }, (_, i) => ({
       e: set[i % set.length],
       left: Math.random() * 100,
@@ -29,7 +34,7 @@ export function Celebration({
   }, [])
 
   return (
-    <div className={`celebrate ${good ? 'good' : 'bad'}`}>
+    <div className={`celebrate ${kind}`}>
       <div className="celebrate-parts">
         {parts.map((p, i) => (
           <span

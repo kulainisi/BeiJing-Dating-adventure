@@ -742,6 +742,10 @@ input {
   animation: fadeIn 0.2s ease both, badShake 0.42s ease;
 }
 
+.celebrate.achieve {
+  background: radial-gradient(circle at 50% 45%, rgba(255, 184, 77, 0.26), rgba(5, 6, 12, 0.55) 62%);
+}
+
 .celebrate-parts {
   position: absolute;
   inset: 0;
@@ -823,6 +827,11 @@ input {
 .celebrate.bad .cb-title {
   color: var(--red);
   text-shadow: 0 0 24px rgba(248, 113, 113, 0.5);
+}
+
+.celebrate.achieve .cb-title {
+  color: #ffd166;
+  text-shadow: 0 0 24px rgba(255, 184, 77, 0.6);
 }
 
 .celebrate-banner .cb-sub {

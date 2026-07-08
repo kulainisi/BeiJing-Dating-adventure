@@ -33,7 +33,7 @@ import { checkAllBlocked, settle } from '@/engine/endings'
 import { performCheck } from '@/engine/checks'
 import { pick, seedRng } from '@/engine/rng'
 import { addDeath, addRun, clearRun, saveRun, unlockAchievements, unlockEnding } from '@/engine/save'
-import { ACHIEVEMENTS, Achievement, evalAchievements } from '@/engine/achievements'
+import { ACHIEVEMENTS, Achievement, evalAchievements, evalMidRun } from '@/engine/achievements'
 import { findEnding, findEvent, getCharacter, getCharacters, resolveDanmaku } from '@/content'
 import { trackEnding, trackPlay } from '@/analytics'
 import { DanmakuLayer, DanmakuItem } from '@/components/Danmaku'
@@ -89,7 +89,7 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
   const [toast, setToast] = useState('')
   const [favorFloat, setFavorFloat] = useState<{ id: number; text: string; good: boolean } | null>(null)
   const [armFeast, setArmFeast] = useState(false)
-  const [celebration, setCelebration] = useState<{ kind: 'good' | 'bad'; title: string; sub: string } | null>(null)
+  const [celebration, setCelebration] = useState<{ kind: 'good' | 'bad' | 'achieve'; title: string; sub: string } | null>(null)
   const pendingEnding = useRef<{ id: string; npcId?: string; detail?: string } | null>(null)
   const toastTimer = useRef<number>(0)
   const celebTimer = useRef<number>(0)
@@ -129,11 +129,13 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
     window.setTimeout(() => setFavorFloat(null), 1400)
   }
 
-  /** 全屏庆祝/翻车:把游戏已产生的高光/低谷时刻兑现成多巴胺 + 震动 */
-  function fireCelebration(kind: 'good' | 'bad', title: string, sub: string) {
+  /** 全屏庆祝/成就/翻车:把游戏已产生的高光/低谷时刻兑现成多巴胺 + 震动 */
+  function fireCelebration(kind: 'good' | 'bad' | 'achieve', title: string, sub: string) {
     setCelebration({ kind, title, sub })
     try {
-      navigator.vibrate?.(kind === 'good' ? [0, 40, 55, 40] : [0, 120, 50, 120])
+      navigator.vibrate?.(
+        kind === 'bad' ? [0, 120, 50, 120] : kind === 'achieve' ? [0, 30, 40, 30, 40, 30] : [0, 40, 55, 40],
+      )
     } catch {
       /* 不支持震动就算了 */
     }
@@ -145,6 +147,20 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
     const m = MILESTONES[key]
     if (!m) return
     fireCelebration('good', m.title, m.sub)
+    fireDanmaku(['#win'])
+  }
+
+  /** 局中即时解锁成就:达成即当场弹金色动效 + 发重投 token */
+  function checkMidAchievements() {
+    const fresh = unlockAchievements(evalMidRun(s))
+    if (!fresh.length) return
+    const objs = ACHIEVEMENTS.filter((a) => fresh.includes(a.id))
+    const first = objs[0]
+    fireCelebration(
+      'achieve',
+      `🏅 ${first.emoji} ${first.name}`,
+      objs.length > 1 ? `等 ${objs.length} 个成就解锁 · +${objs.length} 重投骰` : '成就解锁 · +1 重投骰',
+    )
     fireDanmaku(['#win'])
   }
 
@@ -186,6 +202,7 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
     if (faded.length > 0) showToast('💔 有人被你晾太久,默默把你删了好友。')
     announceMatch(r.decay.find((d) => d.kind === 'match')?.npcId, faded.length > 0 ? 2400 : 400)
     if (checkAllBlocked(s)) return endGame('all_blocked')
+    checkMidAchievements() // 睡后 maxParallel 等已更新,海王等成就可即时解锁
     if (faded.length === 0) showToast(`😴 新的一天。房租和生活费扣了 ¥${r.cost}。`)
 
     if (r.eventId) {
@@ -209,6 +226,7 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
     if (moodDepressed(s)) return endGame('depression') // 加班内耗到底:确定性抑郁判负
     if (checkAllBlocked(s)) return endGame('all_blocked')
     if (s.wallet <= 0) return endGame('bankrupt')
+    checkMidAchievements()
     if (s.energy <= 0) {
       showToast('⚡ 精力耗尽,今天到此为止。')
       doSleep()
@@ -319,6 +337,7 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
     addDeath(npc.blockReason!)
     saveRun(s)
     if (checkAllBlocked(s)) return endGame('all_blocked')
+    checkMidAchievements() // 拉黑数变化,可能即时解锁「拉黑狂魔」
     force()
   }
 
