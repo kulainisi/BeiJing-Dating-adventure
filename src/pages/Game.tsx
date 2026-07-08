@@ -32,7 +32,8 @@ import { bumpMood, moodAura, moodDepressed, moodExtremeRoll, moodHint } from '@/
 import { checkAllBlocked, settle } from '@/engine/endings'
 import { performCheck } from '@/engine/checks'
 import { pick, seedRng } from '@/engine/rng'
-import { addDeath, addRun, clearRun, saveRun, unlockEnding } from '@/engine/save'
+import { addDeath, addRun, clearRun, saveRun, unlockAchievements, unlockEnding } from '@/engine/save'
+import { ACHIEVEMENTS, Achievement, evalAchievements } from '@/engine/achievements'
 import { findEnding, findEvent, getCharacter, getCharacters, resolveDanmaku } from '@/content'
 import { trackEnding, trackPlay } from '@/analytics'
 import { DanmakuLayer, DanmakuItem } from '@/components/Danmaku'
@@ -92,6 +93,7 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
   const pendingEnding = useRef<{ id: string; npcId?: string; detail?: string } | null>(null)
   const toastTimer = useRef<number>(0)
   const celebTimer = useRef<number>(0)
+  const freshAch = useRef<Achievement[]>([])
 
   useEffect(() => {
     seedRng(((s.seed + s.day * 131 + Date.now()) % 2147483647) >>> 0)
@@ -150,6 +152,9 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
     s.ending = { id, npcId, detail }
     trackEnding(s, id) // 结局匿名计数
     unlockEnding(id)
+    // 元进度:结算成就(unlockEnding 之后,collector 能算上当前结局),每个新成就发 1 个重投 token
+    const freshIds = unlockAchievements(evalAchievements(s, id))
+    freshAch.current = ACHIEVEMENTS.filter((a) => freshIds.includes(a.id))
     addRun()
     clearRun()
     // 胜负两端都响:上岸给庆祝,寄了给翻车(社死传播内核不削弱)
@@ -431,7 +436,14 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
       )}
 
       {phase.t === 'ending' && (
-        <EndingScreen s={s} id={phase.id} npcId={phase.npcId} detail={phase.detail} onExit={onExit} />
+        <EndingScreen
+          s={s}
+          id={phase.id}
+          npcId={phase.npcId}
+          detail={phase.detail}
+          newAchievements={freshAch.current}
+          onExit={onExit}
+        />
       )}
 
       <DanmakuLayer items={danmaku} />
@@ -1094,12 +1106,14 @@ function EndingScreen({
   id,
   npcId,
   detail,
+  newAchievements,
   onExit,
 }: {
   s: GameState
   id: string
   npcId?: string
   detail?: string
+  newAchievements?: Achievement[]
   onExit: () => void
 }) {
   const def = findEnding(id, s.version)
@@ -1114,5 +1128,15 @@ function EndingScreen({
     )
   }
   const npcName = npcId ? getCharacter(s.version, npcId).name : undefined
-  return <EndingCard ending={def} state={s} npcName={npcName} detail={detail} onRestart={onExit} onGallery={onExit} />
+  return (
+    <EndingCard
+      ending={def}
+      state={s}
+      npcName={npcName}
+      detail={detail}
+      newAchievements={newAchievements}
+      onRestart={onExit}
+      onGallery={onExit}
+    />
+  )
 }

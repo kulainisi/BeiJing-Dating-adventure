@@ -8,16 +8,27 @@ interface Gallery {
   deaths: string[]
   codes: string[]
   runs: number
+  achievements: string[]
+  rerollTokens: number
+}
+
+const GALLERY_DEFAULT: Gallery = {
+  unlocked: [],
+  deaths: [],
+  codes: [],
+  runs: 0,
+  achievements: [],
+  rerollTokens: 0,
 }
 
 function loadGallery(): Gallery {
   try {
     const raw = localStorage.getItem(GALLERY_KEY)
-    if (raw) return { unlocked: [], deaths: [], codes: [], runs: 0, ...JSON.parse(raw) }
+    if (raw) return { ...GALLERY_DEFAULT, ...JSON.parse(raw) }
   } catch {
     /* 隐私模式等场景下 localStorage 不可用,静默降级 */
   }
-  return { unlocked: [], deaths: [], codes: [], runs: 0 }
+  return { ...GALLERY_DEFAULT }
 }
 
 function saveGallery(g: Gallery) {
@@ -57,6 +68,32 @@ export function addRun() {
 
 export function getUnlockedCodes(): string[] {
   return loadGallery().codes
+}
+
+// ============ 元进度:成就 + 重投投胎骰 token ============
+/** 解锁成就:返回本次「新」解锁的 id;每个新成就奖励 +1 重投投胎骰 token */
+export function unlockAchievements(ids: string[]): string[] {
+  const g = loadGallery()
+  const fresh = ids.filter((id) => !g.achievements.includes(id))
+  if (fresh.length) {
+    g.achievements.push(...fresh)
+    g.rerollTokens += fresh.length
+    saveGallery(g)
+  }
+  return fresh
+}
+
+export function getRerollTokens(): number {
+  return loadGallery().rerollTokens
+}
+
+/** 消费一个重投 token;成功返回 true */
+export function useRerollToken(): boolean {
+  const g = loadGallery()
+  if (g.rerollTokens <= 0) return false
+  g.rerollTokens--
+  saveGallery(g)
+  return true
 }
 
 export function tryUnlockCode(input: string, validCodes: { code: string; id: string }[]): string | null {

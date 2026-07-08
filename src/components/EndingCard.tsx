@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import QRCode from 'qrcode'
 import { EndingDef, GameState } from '@/engine/types'
 import { evaluatePlayer } from '@/engine/relations'
+import { Achievement } from '@/engine/achievements'
 import { shareUrl } from '@/config'
 import { XhsPost } from './XhsPost'
 
@@ -31,11 +32,12 @@ interface Props {
   state: GameState
   npcName?: string
   detail?: string
+  newAchievements?: Achievement[]
   onRestart: () => void
   onGallery: () => void
 }
 
-export function EndingCard({ ending, state, npcName, detail, onRestart, onGallery }: Props) {
+export function EndingCard({ ending, state, npcName, detail, newAchievements, onRestart, onGallery }: Props) {
   const rs = RANK_STYLE[ending.rank]
   const v = evaluatePlayer(state)
   const rarity = RARITY[ending.stars] ?? ''
@@ -199,6 +201,19 @@ export function EndingCard({ ending, state, npcName, detail, onRestart, onGaller
           </div>
         </div>
         <div className="verdict-body">{v.verdict}</div>
+
+        {newAchievements && newAchievements.length > 0 && (
+          <div className="ach-earned">
+            <div className="ach-earned-h">🏅 本局新成就 · 获得 {newAchievements.length} 次重投投胎骰</div>
+            <div className="ach-earned-list">
+              {newAchievements.map((a) => (
+                <span key={a.id} className="ach-chip">
+                  {a.emoji} {a.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ===== 本局感情线(次要背景) ===== */}
         <div className="love-line">

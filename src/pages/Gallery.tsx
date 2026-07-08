@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CODES, getAllEndings } from '@/content'
 import { getGallery, tryUnlockCode } from '@/engine/save'
+import { ACHIEVEMENTS } from '@/engine/achievements'
 import { EndingDef } from '@/engine/types'
 
 const RANK_EMOJI: Record<EndingDef['rank'], string> = {
@@ -66,6 +67,24 @@ export function Gallery({ onBack }: { onBack: () => void }) {
           已解锁暗号:{g.codes.map((id) => CODES.find((c) => c.id === id)?.code).join(' · ')}
         </div>
       )}
+
+      <div className="section-title">
+        🏅 成就({g.achievements.length}/{ACHIEVEMENTS.length}) · 重投投胎骰 ×{g.rerollTokens}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {ACHIEVEMENTS.map((a) => {
+          const un = g.achievements.includes(a.id)
+          return (
+            <div className={`ach-item ${un ? '' : 'locked'}`} key={a.id}>
+              <div className="ach-emoji">{un ? a.emoji : '🔒'}</div>
+              <div>
+                <div className="ach-name">{un ? a.name : '???'}</div>
+                <div className="ach-desc">{a.desc}</div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
 
       {all.map((group) => (
         <div key={group.version}>

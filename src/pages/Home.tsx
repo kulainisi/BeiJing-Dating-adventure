@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { EduId, findEduTier, GameState, getEduTiers, ORIGINS, parallelCap, Version } from '@/engine/types'
 import { newGame } from '@/engine/game'
 import { getCharacters } from '@/content'
-import { loadRun } from '@/engine/save'
+import { getRerollTokens, loadRun, useRerollToken } from '@/engine/save'
 
 export function Home({
   onStart,
@@ -116,7 +116,20 @@ export function Home({
             <span className="slot-tag">🍺 酒量 ???(喝了才知道)</span>
           </div>
         </div>
-        <div style={{ padding: '8px 16px calc(12px + var(--safe-bottom))', flexShrink: 0 }}>
+        <div style={{ padding: '8px 16px calc(12px + var(--safe-bottom))', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {getRerollTokens() > 0 && (
+            <button
+              className="btn"
+              style={{ borderColor: 'rgba(192,132,252,.4)' }}
+              onClick={() => {
+                useRerollToken()
+                setPicks([])
+                setPending(newGame(pending.version, pending.edu))
+              }}
+            >
+              🎲 不服这命?重投一次(剩 {getRerollTokens()} 次 · 靠成就攒的)
+            </button>
+          )}
           <button className="btn primary" onClick={() => setPicking(true)}>
             🚀 就这命了,去挑人开聊
           </button>
