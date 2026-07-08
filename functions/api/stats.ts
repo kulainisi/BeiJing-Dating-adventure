@@ -1,7 +1,7 @@
 /**
  * GET /api/stats?key=XXX — 作者看板:读回聚合计数(多少人玩 / 各结局多少次)。
- * 默认返回一个好看的 HTML 小看板;加 ?format=json 返回裸 JSON。
- * 用一个简单令牌(env.STATS_KEY / stats_key)挡一下公开访问;匿名聚合,无隐私数据。
+ * 默认返回 HTML 小看板(列出所有结局,没人达成的显示 0%);?format=json 返回裸 JSON。
+ * 令牌 env.STATS_KEY / stats_key 挡公开访问;匿名聚合,无隐私数据。
  */
 type KV = {
   get(key: string): Promise<string | null>
@@ -12,6 +12,19 @@ interface Env {
   stats?: KV
   STATS_KEY?: string
   stats_key?: string
+}
+
+// ⚠️ 结局清单内嵌一份(后端函数读不到游戏内容)。新增角色/全局结局时同步这里。
+const GLOBAL_ENDINGS = [
+  'time_manager', 'seaking', 'marriage', 'euphoria', 'emo_quit', 'depression', 'goodcard',
+  'ambiguous', 'readnoreply', 'all_blocked', 'bankrupt', 'awkward_full', 'xhs_posted',
+  'blackout_confess', 'houhai_uncle', 'give_up_feast', 'fate_win',
+]
+const MALE_CHARS = ['linda', 'xiaoman', 'yutong', 'cici', 'nana', 'luna', 'jingjing', 'xiaolu', 'linyi', 'vv', 'beibei', 'coco']
+const FEMALE_CHARS = ['ligong', 'kevin', 'chenyu', 'alex', 'zhouzheng', 'erhuange', 'laopao', 'henry', 'dayong', 'abao', 'laomo', 'guyi']
+
+function allEndingIds(chars: string[]): string[] {
+  return [...GLOBAL_ENDINGS, ...chars.flatMap((c) => [`he_${c}`, `true_${c}`])]
 }
 
 const page = (title: string, body: string) =>
@@ -28,13 +41,13 @@ h1{font-size:20px;margin-bottom:2px}
 .card .k{font-size:12px;color:#93a1b5}
 .card .v{font-size:24px;font-weight:800;margin-top:2px}
 .card .v small{font-size:12px;color:#5b6b80;font-weight:600}
-h2{font-size:14px;color:#93a1b5;margin:18px 0 10px;letter-spacing:1px}
-.row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05)}
-.lbl{width:210px;flex-shrink:0;font-size:13px;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+h2{font-size:14px;color:#93a1b5;margin:20px 0 8px;letter-spacing:1px}
+.row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.row.zero{opacity:.42}
+.lbl{width:200px;flex-shrink:0;font-size:13px;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bar{flex:1;height:8px;background:#1f2937;border-radius:999px;overflow:hidden}
 .bar i{display:block;height:100%;background:linear-gradient(90deg,#ff5d8f,#ff8f5d)}
-.num{width:96px;text-align:right;font-size:12px;color:#aab7c9;flex-shrink:0;font-variant-numeric:tabular-nums}
-.empty{color:#5b6b80;padding:20px 0}
+.num{width:92px;text-align:right;font-size:12px;color:#aab7c9;flex-shrink:0;font-variant-numeric:tabular-nums}
 a{color:#5eadf7}
 </style></head><body>${body}</body></html>`
 
@@ -47,7 +60,7 @@ export const onRequestGet = async (context: { request: Request; env: Env }): Pro
   }
   const kv = context.env.STATS ?? context.env.stats // 绑定名大小写都认
   if (!kv) {
-    return new Response(page('监控', '<h1>尚未绑定 KV</h1><p class="sub">请在 Pages 项目 Settings → Bindings 添加 KV,变量名 STATS,再重新部署。</p>'), {
+    return new Response(page('监控', '<h1>尚未绑定 KV</h1><p class="sub">Pages 项目 Settings → Bindings 添加 KV(变量名 STATS),再重新部署。</p>'), {
       headers: { 'content-type': 'text/html; charset=utf-8' },
     })
   }
@@ -65,19 +78,29 @@ export const onRequestGet = async (context: { request: Request; env: Env }): Pro
   const pf = counts['count:play:female'] || 0
   const endTotal = counts['count:endings_total'] || 0
 
-  const endings = Object.entries(counts)
-    .filter(([k]) => k.startsWith('count:ending:'))
-    .map(([k, v]) => ({ label: k.slice('count:ending:'.length), v }))
-    .sort((a, b) => b.v - a.v)
-
-  const rows = endings.length
-    ? endings
-        .map((e) => {
-          const pct = endTotal ? Math.round((e.v / endTotal) * 100) : 0
-          return `<div class="row"><span class="lbl">${e.label}</span><span class="bar"><i style="width:${pct}%"></i></span><span class="num">${e.v} · ${pct}%</span></div>`
-        })
-        .join('')
-    : '<div class="empty">还没有结局数据——去玩一局走到结局吧。</div>'
+  const section = (version: 'male' | 'female', chars: string[], title: string) => {
+    const ids = allEndingIds(chars)
+    // 合并 KV 里出现过、但不在内嵌清单里的额外 id(防清单漂移漏掉)
+    const prefix = `count:ending:${version}:`
+    for (const k of Object.keys(counts)) {
+      if (k.startsWith(prefix)) {
+        const id = k.slice(prefix.length)
+        if (!ids.includes(id)) ids.push(id)
+      }
+    }
+    const rows = ids
+      .map((id) => ({ id, v: counts[`count:ending:${version}:${id}`] || 0 }))
+      .sort((a, b) => b.v - a.v)
+    const vTotal = rows.reduce((s, r) => s + r.v, 0)
+    const done = rows.filter((r) => r.v > 0).length
+    const body = rows
+      .map((r) => {
+        const pct = vTotal ? Math.round((r.v / vTotal) * 100) : 0
+        return `<div class="row${r.v === 0 ? ' zero' : ''}"><span class="lbl">${r.id}</span><span class="bar"><i style="width:${pct}%"></i></span><span class="num">${r.v} · ${pct}%</span></div>`
+      })
+      .join('')
+    return `<h2>${title}(达成 ${done}/${rows.length})</h2>${body}`
+  }
 
   const body = `
     <h1>💘 北京Dating · 监控看板</h1>
@@ -87,8 +110,8 @@ export const onRequestGet = async (context: { request: Request; env: Env }): Pro
       <div class="card"><div class="k">男版 / 女版</div><div class="v">${pm} <small>/ ${pf}</small></div></div>
       <div class="card"><div class="k">走到结局</div><div class="v">${endTotal}</div></div>
     </div>
-    <h2>各结局分布(占结局总数)</h2>
-    ${rows}`
+    ${section('male', MALE_CHARS, '🕹️ 男版结局')}
+    ${section('female', FEMALE_CHARS, '🕹️ 女版结局')}`
 
   return new Response(page('北京Dating · 监控', body), {
     headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
