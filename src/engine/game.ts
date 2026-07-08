@@ -111,6 +111,9 @@ export function newGame(version: Version, edu: EduId, seed?: number): GameState 
       drinks: 0,
       checksPassed: 0,
       checksFailed: 0,
+      workCount: 0,
+      careCount: 0,
+      lowMoodDays: 0,
     },
     eventDone: [],
     luckyDay: false,
@@ -146,6 +149,7 @@ export function sleep(s: GameState): SleepResult {
   s.luckyDay = false
   s.awkward = Math.max(0, s.awkward - 25 - eduT.sleepAwkBonus)
   moodDrift(s)
+  if (s.mood <= 25) s.stats.lowMoodDays++ // 内耗天数(人物鉴定用)
 
   if (bankrupt || s.day > TOTAL_DAYS) {
     return { cost, bankrupt, decay: [], gameOver: s.day > TOTAL_DAYS }
@@ -179,6 +183,7 @@ export function doWork(s: GameState): string {
   const gain = Math.round((s.salary / 22) * 1.5)
   s.wallet += gain
   spendEnergy(s, ENERGY_COST.work)
+  s.stats.workCount++
   bumpMood(s, -6) // 搞钱不是零成本:加班太多会内耗心情(喂给「气场」雪球的另一面)
   for (const npc of Object.values(s.npcs)) {
     if (isAlive(npc) && npc.stage !== 'confirmed') npc.favor = Math.max(0, npc.favor - 2)

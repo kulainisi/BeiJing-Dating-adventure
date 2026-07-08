@@ -189,6 +189,7 @@ export function applyEffects(
     bumpMood(s, -4)
   }
   if (fx.blackout) s.stats.blackouts++
+  if (fx.care) s.stats.careCount++
   if (fx.opinion) {
     const log = s.opinionLog[fx.opinion.id] ?? []
     s.opinionLog[fx.opinion.id] = [...log, ...fx.opinion.tags]
@@ -317,4 +318,89 @@ export function confirmedList(s: GameState) {
 
 export function moodOpener(profile: CharacterProfile, mood: MoodId): string | null {
   return profile.moodLines[mood] ?? null
+}
+
+// ============ 玩家人物评价体系(结局卡头版:北京对你这个人的鉴定书) ============
+export interface PlayerVerdict {
+  /** 人格标题 */
+  title: string
+  /** 性格标签(3-4 个) */
+  tags: string[]
+  /** 一段鉴定评语 */
+  verdict: string
+}
+
+/**
+ * 从本局行为数据(拉黑/踩雷/暖心/加班/海王/心情/检定…)给玩家一份人物鉴定。
+ * 游戏本质是对玩家的评价体系:感情结果只是背景,这才是结局卡的 C 位。
+ */
+export function evaluatePlayer(s: GameState): PlayerVerdict {
+  const st = s.stats
+  const care = st.careCount ?? 0
+  const work = st.workCount ?? 0
+  const low = st.lowMoodDays ?? 0
+  const { blocks, mines, maxParallel: par, drinks, checksPassed: passed, checksFailed: failed, spent } = st
+  const confirmed = Object.values(s.npcs).filter((n) => n.stage === 'confirmed').length
+  const cohabiting = s.flags.includes('cohabiting')
+
+  // 性格标签:独立打分,收集全部命中,取前 4 个
+  const tagPool: [boolean, string][] = [
+    [par >= 4, '#雨露均沾'],
+    [par >= 3 && confirmed === 0, '#海王体质'],
+    [blocks >= 3, '#绝情'],
+    [care >= 4, '#电子暖宝'],
+    [mines >= 3, '#嘴比脑快'],
+    [work >= 4, '#搞钱要紧'],
+    [drinks >= 5, '#酒局选手'],
+    [passed >= 4 && passed >= failed * 2, '#人间清醒'],
+    [failed >= 4 && failed >= passed, '#社死体质'],
+    [low >= 2, '#精神内耗'],
+    [s.mood >= 78, '#情绪松弛'],
+    [spent >= 5000, '#该花花该省省'],
+    [cohabiting, '#同居过'],
+    [confirmed >= 1, '#上过岸'],
+    [s.origin === 'rich', '#含金汤匙'],
+    [s.origin === 'energetic', '#电量永动机'],
+  ]
+  const tags = tagPool.filter(([c]) => c).map(([, t]) => t)
+
+  // 人格标题:按优先级取第一个命中的极端人设
+  const titleRules: [boolean, string][] = [
+    [par >= 4, '朝阳区中央空调 · 持证上岗'],
+    [work >= 5, '为搞钱燃尽自己的卷王'],
+    [blocks >= 4, '拉黑如呼吸的绝情战神'],
+    [mines >= 4, '嘴比脑子快半拍的社交莽夫'],
+    [failed >= 5 && failed > passed, '社死界的活化石'],
+    [care >= 5 && blocks <= 1, '行走的电子暖宝宝'],
+    [drinks >= 6, '北京酒局头号幸存者'],
+    [low >= 3 || s.mood <= 15, '精神内耗永动机'],
+    [passed >= 6 && passed >= failed * 2, '一张嘴走遍朝阳区'],
+    [spent >= 8000 && confirmed >= 1, '把钱包和真心一起梭哈的恋爱脑'],
+    [confirmed >= 1 && blocks === 0 && mines <= 1, '稳稳上岸的松弛人'],
+  ]
+  const title = titleRules.find(([c]) => c)?.[1] ?? '北漂 dating 众生相之一'
+
+  // 鉴定评语:主线索 + 数据点拼装
+  const bits: string[] = []
+  bits.push(
+    par >= 3
+      ? '你在多条战线上同时发力,鱼塘水质优良。'
+      : confirmed >= 1
+        ? '你把心思压在了一个人身上,难得。'
+        : '你在暧昧的边缘反复横跳,谁也没真正抓住。',
+  )
+  if (care >= 3) bits.push('嘘寒问暖是你的主武器,')
+  if (blocks >= 3) bits.push(`亲手拉黑了 ${blocks} 个人,`)
+  if (mines >= 3) bits.push(`嘴上踩了 ${mines} 次雷,`)
+  if (work >= 4) bits.push('加班搬钱一刻没停,')
+  if (low >= 2) bits.push('好几个深夜没睡好,')
+  bits.push(
+    s.mood >= 78
+      ? '但整体状态在线,气场没垮。'
+      : s.mood <= 22
+        ? '这座城市这个月把你熬得有点狠。'
+        : '不好不坏,和大多数北漂一样,凑合着往前走。',
+  )
+
+  return { title, tags: tags.slice(0, 4), verdict: bits.join('') }
 }

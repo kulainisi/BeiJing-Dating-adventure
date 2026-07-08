@@ -885,6 +885,110 @@ input {
   line-height: 1.8;
 }
 
+/* ============ 人物鉴定头版 ============ */
+.verdict-head {
+  padding: 24px 20px 14px;
+  text-align: center;
+}
+
+.verdict-head .rank-tag {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  margin-bottom: 12px;
+}
+
+.verdict-head h1 {
+  font-size: 25px;
+  font-weight: 900;
+  line-height: 1.32;
+}
+
+.verdict-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.vtag {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(192, 132, 252, 0.16);
+  color: var(--purple);
+}
+
+.verdict-rarity {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 12px;
+  letter-spacing: 1px;
+}
+
+.verdict-body {
+  padding: 4px 22px 16px;
+  font-size: 14.5px;
+  color: var(--text-dim);
+  line-height: 1.85;
+  text-align: center;
+}
+
+.love-line {
+  margin: 0 16px 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid var(--line);
+  text-align: center;
+}
+
+.ll-label {
+  font-size: 11.5px;
+  color: var(--text-faint);
+  letter-spacing: 1px;
+}
+
+.ll-title {
+  font-size: 17px;
+  font-weight: 800;
+  margin-top: 6px;
+  color: var(--text);
+}
+
+.ll-stars {
+  font-size: 14px;
+  color: #ffd166;
+  letter-spacing: 2px;
+  margin-top: 2px;
+}
+
+.ll-badge {
+  font-size: 13px;
+  color: var(--accent2);
+  font-weight: 700;
+  margin-top: 6px;
+}
+
+.ll-sub {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  margin-top: 3px;
+}
+
+.ll-comment {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.7;
+  margin-top: 8px;
+  text-align: left;
+}
+
 .ending-stats {
   display: grid;
   grid-template-columns: 1fr 1fr;

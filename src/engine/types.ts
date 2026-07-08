@@ -303,6 +303,12 @@ export interface RunStats {
   drinks: number
   checksPassed: number
   checksFailed: number
+  /** 加班次数(卷王指数) */
+  workCount: number
+  /** 暖心选择次数(嘘寒问暖) */
+  careCount: number
+  /** 心情跌到低区的天数(内耗指数) */
+  lowMoodDays: number
 }
 
 export interface EndingResult {
