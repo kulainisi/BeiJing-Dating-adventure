@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react'
+import QRCode from 'qrcode'
 import { EndingDef, GameState } from '@/engine/types'
+import { shareUrl } from '@/config'
 import { XhsPost } from './XhsPost'
 
 const RANK_STYLE: Record<EndingDef['rank'], { label: string; bg: string; chip: string }> = {
@@ -30,63 +32,81 @@ export function EndingCard({ ending, state, npcName, detail, onRestart, onGaller
 
   const sqm = (state.stats.spent / 80000).toFixed(5)
 
-  function drawCanvas(): HTMLCanvasElement {
+  async function drawCanvas(): Promise<HTMLCanvasElement> {
     const c = document.createElement('canvas')
-      c.width = 720
-      c.height = 1080
-      const g = c.getContext('2d')!
-      const grad = g.createLinearGradient(0, 0, 720, 1080)
-      grad.addColorStop(0, '#231433')
-      grad.addColorStop(1, '#0d1420')
-      g.fillStyle = grad
-      g.fillRect(0, 0, 720, 1080)
-      g.fillStyle = 'rgba(255,255,255,.06)'
-      for (let i = 0; i < 5; i++) g.fillRect(0, 200 + i * 160, 720, 1)
+    c.width = 720
+    c.height = 1240
+    const g = c.getContext('2d')!
+    const grad = g.createLinearGradient(0, 0, 720, 1240)
+    grad.addColorStop(0, '#231433')
+    grad.addColorStop(1, '#0d1420')
+    g.fillStyle = grad
+    g.fillRect(0, 0, 720, 1240)
+    g.fillStyle = 'rgba(255,255,255,.06)'
+    for (let i = 0; i < 6; i++) g.fillRect(0, 200 + i * 160, 720, 1)
 
-      g.textAlign = 'center'
-      g.fillStyle = '#ffb84d'
-      g.font = '28px sans-serif'
-      g.fillText(`—— ${rs.label} ——`, 360, 130)
-      g.fillStyle = '#fff'
-      g.font = 'bold 52px sans-serif'
-      wrapText(g, ending.title, 360, 220, 620, 64)
-      g.fillStyle = '#ffd166'
-      g.font = '36px sans-serif'
-      g.fillText(stars(ending.stars), 360, 330)
+    g.textAlign = 'center'
+    g.fillStyle = '#ffb84d'
+    g.font = '28px sans-serif'
+    g.fillText(`—— ${rs.label} ——`, 360, 130)
+    g.fillStyle = '#fff'
+    g.font = 'bold 52px sans-serif'
+    wrapText(g, ending.title, 360, 220, 620, 64)
+    g.fillStyle = '#ffd166'
+    g.font = '36px sans-serif'
+    g.fillText(stars(ending.stars), 360, 330)
+    g.fillStyle = '#c084fc'
+    g.font = 'bold 34px sans-serif'
+    g.fillText(`获得称号:${ending.badge}`, 360, 410)
+    g.fillStyle = '#aab7c9'
+    g.font = '26px sans-serif'
+    wrapText(g, ending.comment, 360, 480, 600, 42)
+    g.fillStyle = '#93a1b5'
+    g.font = '24px sans-serif'
+    g.fillText(`累计消费 ¥${state.stats.spent} ≈ ${sqm}㎡北京房价`, 360, 840)
+    g.fillText(
+      `拉黑${state.stats.blocks}次 · 踩雷${state.stats.mines}次 · 断片${state.stats.blackouts}次`,
+      360,
+      885,
+    )
+    if (ending.secretCode) {
       g.fillStyle = '#c084fc'
-      g.font = 'bold 34px sans-serif'
-      g.fillText(`获得称号:${ending.badge}`, 360, 410)
-      g.fillStyle = '#aab7c9'
-      g.font = '26px sans-serif'
-      wrapText(g, ending.comment, 360, 480, 600, 42)
-      g.fillStyle = '#93a1b5'
-      g.font = '24px sans-serif'
-      g.fillText(`累计消费 ¥${state.stats.spent} ≈ ${sqm}㎡北京房价`, 360, 840)
-      g.fillText(
-        `拉黑${state.stats.blocks}次 · 踩雷${state.stats.mines}次 · 断片${state.stats.blackouts}次`,
-        360,
-        885,
-      )
-      if (ending.secretCode) {
-        g.fillStyle = '#c084fc'
-        g.font = 'bold 30px sans-serif'
-        g.fillText(`暗号:${ending.secretCode}`, 360, 950)
-      }
-      g.fillStyle = '#5b6b80'
-      g.font = '22px sans-serif'
-      g.fillText('《北京Dating模拟器》· 一款人均社死的恋爱冒险', 360, 1020)
+      g.font = 'bold 30px sans-serif'
+      g.fillText(`暗号:${ending.secretCode}`, 360, 948)
+    }
+
+    // 游戏链接二维码(扫码即玩,方便传播)
+    const qr = document.createElement('canvas')
+    await QRCode.toCanvas(qr, shareUrl(), {
+      width: 168,
+      margin: 1,
+      color: { dark: '#1b1030', light: '#ffffff' },
+    })
+    const qx = 360 - 92
+    const qy = 980
+    g.fillStyle = '#ffffff'
+    roundRect(g, qx, qy, 184, 184, 16)
+    g.fill()
+    g.drawImage(qr, qx + 8, qy + 8, 168, 168)
+    g.fillStyle = '#e8ecf3'
+    g.font = 'bold 26px sans-serif'
+    g.fillText('📱 扫码进入游戏,来北京Dating', 360, 1200)
+    g.fillStyle = '#5b6b80'
+    g.font = '20px sans-serif'
+    g.fillText('《北京Dating模拟器》· 一款人均社死的恋爱冒险', 360, 1230)
+
     return c
   }
 
-  function openPreview() {
+  async function openPreview() {
     setShareMsg('')
-    setPreview(drawCanvas().toDataURL('image/png'))
+    setPreview((await drawCanvas()).toDataURL('image/png'))
   }
 
   /** 手机端:走系统分享面板(可直接「保存图片」到相册);不支持时提示长按 */
   async function shareToAlbum() {
     try {
-      const c = drawCanvas()
+      const c = await drawCanvas()
       const blob: Blob | null = await new Promise((res) => c.toBlob(res, 'image/png'))
       if (!blob) throw new Error('no blob')
       const file = new File([blob], `北京Dating结局-${ending.title}.png`, { type: 'image/png' })
@@ -103,10 +123,10 @@ export function EndingCard({ ending, state, npcName, detail, onRestart, onGaller
   }
 
   /** 桌面端:下载 PNG 文件 */
-  function downloadFile() {
+  async function downloadFile() {
     const a = document.createElement('a')
     a.download = `北京Dating结局-${ending.title}.png`
-    a.href = drawCanvas().toDataURL('image/png')
+    a.href = (await drawCanvas()).toDataURL('image/png')
     a.click()
   }
 
@@ -212,6 +232,23 @@ export function EndingCard({ ending, state, npcName, detail, onRestart, onGaller
       )}
     </div>
   )
+}
+
+function roundRect(
+  g: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+) {
+  g.beginPath()
+  g.moveTo(x + r, y)
+  g.arcTo(x + w, y, x + w, y + h, r)
+  g.arcTo(x + w, y + h, x, y + h, r)
+  g.arcTo(x, y + h, x, y, r)
+  g.arcTo(x, y, x + w, y, r)
+  g.closePath()
 }
 
 function wrapText(
