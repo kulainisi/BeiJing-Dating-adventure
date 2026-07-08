@@ -56,6 +56,9 @@ const SCENE_BG: Record<string, { grad: string; emoji: string }> = {
   walk: { grad: 'linear-gradient(135deg,#14532d,#0f766e)', emoji: '🏮' },
   sport: { grad: 'linear-gradient(135deg,#166534,#4d7c0f)', emoji: '🏃' },
   shop: { grad: 'linear-gradient(135deg,#831843,#be185d)', emoji: '🛍️' },
+  ktv: { grad: 'linear-gradient(135deg,#6d28d9,#db2777)', emoji: '🎤' },
+  jubensha: { grad: 'linear-gradient(135deg,#1e293b,#7c3aed)', emoji: '🕵️' },
+  park: { grad: 'linear-gradient(135deg,#0e7490,#f59e0b)', emoji: '🎢' },
 }
 
 let danmakuId = 0

@@ -24,11 +24,21 @@ npm run check-story  # ★ 内容校验:任何剧情改动后必跑,抓断头节
 
 ## 核心规则与约定
 
-- 游戏结构:14天×早/晚回合;开局20点分6维技能;选项文案必须是"玩家的动作"
+- 游戏结构:14天,精力=行动点(聊天1/约会2/加班2,睡觉回满并扣每日房租+生活费);
+  开局=文化三档(高知7/普通5/体育生3)+投胎骰(84%普通北漂/8%钞能力/8%高精力宝宝);
+  精力决定并聊上限1-4人,拉黑/离开北京后从锁定池随机补位;**钱归零任何时刻立即败北**
+- 属性映射(内容层检定 id 不变,引擎解析):mouth/mind/culture→文化水平;image→排面
+  (基础2+行头0/2/4,钱临时买);liquor→隐藏酒量(每局随机1-8+体育生加成,UI永远显示???)
+- **随机不可见**:一切检定/天命骰/婚姻骰/玩家隐藏心情(mood,极端3%触发上头/删号回老家)均为暗骰,
+  无骰子动画,选项不带🎲标记,结果只走剧情分支
+- 擦边内容红线:SFW,暧昧张力到「关灯黑屏」为止,零露骨;角色 spicy 系数 0.03-0.35
+- 选项文案必须是"玩家的动作";约会价格=两人消费,参照北京真实物价(¥60-2600)
 - 观点标签体系(角色 loves/hates/deathTags 与看法题 options.tags 匹配):
   practical/romantic/flex/frugal/indie/corporate/chill/trad/equal/zhi(冒犯发言)/sincere
-- 每角色必有:intro + ≥3 topics + dateSpots(2-3个) + moodLines + blockLines + confirmYes/No
-  + he/trueHe + trueFlag(在某个topic选项里用 npcFlags 发放,决定结算走普通HE还是真爱HE)
+- 每角色必有:intro + ≥3 topics + dateSpots(3-5个) + moodLines + blockLines + confirmYes/No
+  + spicy + he/trueHe + trueFlag(在某个topic选项里用 npcFlags 发放,决定结算走普通HE还是真爱HE)
+- 特殊结算:闪婚 marriage(好感≥98+trueFlag+约会≥5,约会后8%/结算日20%);seaking(≥3人好感≥70
+  且无人确立);留宿 stayed flag 会提高真结局门槛(Coco 除外,她的真结局反而需要它)
 - 跨版本暗号在 shared.ts 的 CODES,对应角色的 hiddenTopics.codeId;结局暗号印在 he.secretCode
 - 剧本 DSL 与新增角色/事件/看法题的详细步骤见 README.md「内容更新指南」
 - 中文文案用直角引号「」,不要在单引号字符串里嵌套中文单引号(会破坏TS语法)

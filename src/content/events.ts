@@ -448,6 +448,66 @@ const EVENTS: RandomEventDef[] = [
   },
 ]
 
+// 🎬 剧组修罗场(女版限定):制片人老莫 × 小演员顾一
+const crewDrama: RandomEventDef = {
+  id: 'crew_drama',
+  once: true,
+  eligible: (s) => {
+    if (s.version !== 'female') return false
+    const lm = s.npcs['laomo']
+    const gy = s.npcs['guyi']
+    return !!lm && !!gy && isAlive(lm) && isAlive(gy) && lm.favor >= 25 && gy.favor >= 25 && s.day >= 5
+  },
+  weight: () => 16,
+  build: (s) => {
+    const sc = eventScript('ev_crew', '剧组修罗场', 'dinner', [
+      node('a', [
+        nar('顾一发来消息:「今天有个组的饭局,制片人在挑人,你陪我去壮胆呗!」'),
+        nar('你到了才发现——桌子主位坐着的制片人,是老莫。'),
+        nar('老莫看到你,举着的酒杯停在了半空。顾一还在旁边小声跟你说:「就是他,圈里人称莫总。」'),
+        sys('大型剧组修罗场,开机。'),
+      ], {
+        danmaku: ['#seen'],
+        choices: [
+          {
+            text: '面不改色,以「顾一的朋友」身份完成全场社交',
+            check: { skill: 'mind', dc: 14, pass: 'ok', fail: 'fail', crit: 'crit' },
+          },
+          { text: '主动挑明:莫总,巧了,我们也认识', goto: 'honest' },
+        ],
+      }),
+      node('crit', [
+        nar('你全程滴水不漏,还顺势把顾一的十年经历讲成了一个好故事。'),
+        npc('「(老莫看着顾一,又看看你)这小伙子,脸上有生活。留个联系方式,下个本子有个角色像他。」'),
+        nar('饭局散了,两个人都觉得今晚的你发着光。只有你知道自己刚才走了多细的钢丝。'),
+      ], { effects: { favor: 8 }, end: true }),
+      node('ok', [
+        nar('你稳住了。除了老莫敬酒时意味深长的那句「朋友的朋友,也是朋友」,一切平安落地。'),
+        nar('回去的路上,你后背的汗把外套洇湿了一小块。'),
+      ], { effects: { favor: -2 }, end: true }),
+      node('fail', [
+        nar('饭局过半,老莫忽然说:「你俩认识多久了?」你和顾一同时开口,报出了两个不同的版本。'),
+        nar('桌上安静了三秒。圈里人精得很,谁都没说破,谁都懂了。'),
+        npc('「(顾一散场后在楼下等你)那个……莫总那边,你们,嗯,我没有别的意思,就是……」'),
+        nar('他没问完,你也没答完。两条线的好感,同时降温。'),
+      ], { effects: { favor: -14, blockNpcIds: [] }, end: true }),
+      node('honest', [
+        nar('你把话挑明了。桌上愣了两秒,老莫先笑了:「行啊,北京真小。」'),
+        nar('饭局照常进行,只是老莫敬你的那杯酒,你品出了点复杂的余味。散场后顾一和老莫各自给你发了条消息,内容不同,试探相同。'),
+      ], { effects: { favor: -8 }, end: true }),
+    ])
+    // fail 分支:另一位也降温
+    const failNode = sc.nodes['fail']
+    failNode.effects = { favor: -14 }
+    sc.npcId = 'guyi'
+    const lm = s.npcs['laomo']
+    if (lm && isAlive(lm)) lm.favor = Math.max(0, lm.favor - 6)
+    return sc
+  },
+}
+
+EVENTS.push(crewDrama)
+
 export function getEventsFor(version: Version): RandomEventDef[] {
   return EVENTS
 }

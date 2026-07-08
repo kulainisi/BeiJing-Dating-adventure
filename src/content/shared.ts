@@ -34,4 +34,16 @@ export const CODES: SecretCode[] = [
     from: '女版 · 私教Kevin的结局卡',
     unlocks: '男版 · Linda的罗生门剧情(她的前男友)',
   },
+  {
+    id: 'disc',
+    code: '凌晨四点的打口碟',
+    from: '女版 · 地下DJ阿豹的结局卡',
+    unlocks: '男版 · Vv的罗生门剧情(她的DJ前任)',
+  },
+  {
+    id: 'sticker',
+    code: '天台上的荧光贴纸',
+    from: '男版 · 亚逼女孩Vv的结局卡',
+    unlocks: '女版 · 阿豹的罗生门剧情(他的画画前任)',
+  },
 ]
