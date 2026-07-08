@@ -256,13 +256,15 @@ export function blockNpc(
   npc: NpcState,
   profile: CharacterProfile | null,
   reason: string,
+  refill = true,
 ): string | null {
   if (npc.stage === 'blocked') return null
   npc.stage = 'blocked'
   npc.blockReason = reason
   s.stats.blocks++
   bumpMood(s, -12)
-  return refillPool(s)
+  // 玩家主动腾位换人时 refill=false:名额留给玩家自己挑,不随机补位
+  return refill ? refillPool(s) : null
 }
 
 // ============ 冷落衰减(每日结算) ============

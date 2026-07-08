@@ -9,6 +9,7 @@ import {
   NodeDef,
   NpcState,
   ORIGINS,
+  parallelCap,
   Script,
   SKILL_DISPLAY,
   TOTAL_DAYS,
@@ -26,7 +27,7 @@ import {
   tryInvite,
 } from '@/engine/game'
 import { chance } from '@/engine/rng'
-import { applyEffects, fateRoll, isAlive, refillPool, relationTier } from '@/engine/relations'
+import { applyEffects, blockNpc, fateRoll, isAlive, refillPool, relationTier } from '@/engine/relations'
 import { bumpMood, moodAura, moodDepressed, moodExtremeRoll, moodHint } from '@/engine/mood'
 import { checkAllBlocked, settle } from '@/engine/endings'
 import { performCheck } from '@/engine/checks'
@@ -305,6 +306,28 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
     force()
   }
 
+  /** 主动拉黑腾位:不随机补位,名额留给玩家自己挑下一个;计入拉黑数 */
+  function dropNpc(npcId: string) {
+    const npc = s.npcs[npcId]
+    const profile = getCharacter(s.version, npcId)
+    blockNpc(s, npc, profile, '你主动划走了这段对话——不聊了', false)
+    addDeath(npc.blockReason!)
+    saveRun(s)
+    if (checkAllBlocked(s)) return endGame('all_blocked')
+    force()
+  }
+
+  /** 腾出名额后,玩家从锁定池手动挑一个开聊 */
+  function unlockNpc(npcId: string) {
+    const npc = s.npcs[npcId]
+    npc.stage = 'chatting'
+    npc.unread = true
+    npc.lastDay = s.day
+    showToast(`💬 你把 ${getCharacter(s.version, npcId).name} 从人海里捞了出来,开始聊了。`)
+    saveRun(s)
+    force()
+  }
+
   // ============ 渲染 ============
   const chars = getCharacters(s.version)
   const aura = moodAura(s)
@@ -376,6 +399,8 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
             if (phase.mode === 'chat') startChat(c)
             else setPhase({ t: 'spot', npcId: c.id })
           }}
+          onDrop={dropNpc}
+          onUnlock={unlockNpc}
         />
       )}
 
@@ -524,34 +549,77 @@ function NpcList({
   mode,
   onBack,
   onPick,
+  onDrop,
+  onUnlock,
 }: {
   s: GameState
   chars: CharacterProfile[]
   mode: 'chat' | 'date'
   onBack: () => void
   onPick: (c: CharacterProfile) => void
+  onDrop: (npcId: string) => void
+  onUnlock: (npcId: string) => void
 }) {
+  const [armDrop, setArmDrop] = useState<string | null>(null)
+  const cap = parallelCap(s.maxEnergy)
+  const activeCount = chars.filter((c) => isAlive(s.npcs[c.id])).length
+  const canUnlock = mode === 'chat' && activeCount < cap
+
+  const sorted = [...chars].sort((a, b) => {
+    // 在聊的人置顶,其次锁定(可解锁),最后已失联
+    const rk = (id: string) => {
+      const n = s.npcs[id]
+      return isAlive(n) ? 0 : n.stage === 'locked' ? 1 : 2
+    }
+    return rk(a.id) - rk(b.id)
+  })
+
   return (
     <div className="scroll fade-in" style={{ padding: '12px 14px 24px' }}>
       <button className="btn ghost" style={{ width: 'auto', padding: '4px 0', fontSize: 14 }} onClick={onBack}>
         ← 返回
       </button>
-      <h3 style={{ fontSize: 17, fontWeight: 800, margin: '4px 0 12px' }}>
+      <h3 style={{ fontSize: 17, fontWeight: 800, margin: '4px 0 8px' }}>
         {mode === 'chat' ? '💬 找谁聊?' : '📍 约谁出来?'}
       </h3>
+      {mode === 'chat' && (
+        <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: '0 0 12px', lineHeight: 1.7 }}>
+          在聊 {activeCount}/{cap}。
+          {canUnlock ? '还有名额,可从下面锁定的人里挑一个开聊。' : '名额已满,想聊新的人得先「不聊了」腾个位。'}
+          拉黑太多(≥6)会触发孤寡认证,别无脑换人。
+        </p>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-        {[...chars]
-          .sort((a, b) => {
-            // 在聊的人置顶,其次锁定(待解锁),最后已失联
-            const rk = (id: string) => {
-              const n = s.npcs[id]
-              return isAlive(n) ? 0 : n.stage === 'locked' ? 1 : 2
-            }
-            return rk(a.id) - rk(b.id)
-          })
-          .map((c) => {
+        {sorted.map((c) => {
           const n = s.npcs[c.id]
+
+          // 锁定:聊天模式且有名额 → 可点开聊;否则 ???
           if (n.stage === 'locked') {
+            if (canUnlock) {
+              return (
+                <button
+                  key={c.id}
+                  className="npc-card"
+                  style={{ borderStyle: 'dashed' }}
+                  onClick={() => onUnlock(c.id)}
+                >
+                  <div className="big-avatar" style={{ background: `${c.color}22`, border: `1.5px dashed ${c.color}66` }}>
+                    {c.emoji}
+                  </div>
+                  <div className="info">
+                    <div className="name">
+                      {c.name}
+                      <span className="tier-chip" style={{ background: 'rgba(94,173,247,.16)', color: 'var(--blue)' }}>
+                        ＋ 开聊
+                      </span>
+                    </div>
+                    <div className="sub" style={{ whiteSpace: 'normal' }}>
+                      {c.bio}
+                    </div>
+                  </div>
+                </button>
+              )
+            }
             return (
               <div key={c.id} className="npc-card dead" style={{ opacity: 0.35 }}>
                 <div className="big-avatar" style={{ background: 'var(--panel2)' }}>
@@ -559,54 +627,88 @@ function NpcList({
                 </div>
                 <div className="info">
                   <div className="name">???</div>
-                  <div className="sub">「心动Beijing」正在为你物色……有人离开后会自动推荐新朋友</div>
+                  <div className="sub">名额满了。先把某个在聊的「不聊了」腾出位,才能解锁新朋友。</div>
                 </div>
               </div>
             )
           }
+
           const dead = !isAlive(n)
           const canMind = s.skills.mind >= 6
           const hiddenReady = (c.hiddenTopics ?? []).some(
             (h) => s.flags.includes(`code:${h.codeId}`) && !n.usedHidden.includes(h.script.id),
           )
+          const canDrop = mode === 'chat' && !dead && n.stage !== 'confirmed'
+          const armed = armDrop === c.id
+
           return (
-            <button
-              key={c.id}
-              className={`npc-card ${dead ? 'dead' : ''}`}
-              disabled={dead}
-              onClick={() => onPick(c)}
-            >
-              <div className="big-avatar" style={{ background: `${c.color}33`, border: `1.5px solid ${c.color}66` }}>
-                {c.emoji}
-                {n.unread && !dead && <span className="unread-dot" />}
-              </div>
-              <div className="info">
-                <div className="name">
-                  {c.name}
-                  {!dead && (
-                    <span className="tier-chip">
-                      {relationTier(n).emoji}
-                      {relationTier(n).name}
-                    </span>
-                  )}
-                  {hiddenReady && <span style={{ fontSize: 12 }}>✨</span>}
-                  {!dead && n.mood !== 'normal' && canMind && (
-                    <span className="mood-chip">
-                      {MOODS[n.mood].emoji}
-                      {MOODS[n.mood].name}
-                    </span>
-                  )}
+            <div key={c.id} style={{ position: 'relative' }}>
+              <button
+                className={`npc-card ${dead ? 'dead' : ''}`}
+                disabled={dead}
+                onClick={() => onPick(c)}
+                style={canDrop ? { paddingRight: 66 } : undefined}
+              >
+                <div className="big-avatar" style={{ background: `${c.color}33`, border: `1.5px solid ${c.color}66` }}>
+                  {c.emoji}
+                  {n.unread && !dead && <span className="unread-dot" />}
                 </div>
-                <div className="sub">
-                  {dead ? `💔 ${n.blockReason ?? '已失联'}` : !canMind && n.mood !== 'normal' ? MOODS[n.mood].hint : c.bio}
-                </div>
-                {!dead && (
-                  <div className="favor-bar">
-                    <i style={{ width: `${n.favor}%` }} />
+                <div className="info">
+                  <div className="name">
+                    {c.name}
+                    {!dead && (
+                      <span className="tier-chip">
+                        {relationTier(n).emoji}
+                        {relationTier(n).name}
+                      </span>
+                    )}
+                    {hiddenReady && <span style={{ fontSize: 12 }}>✨</span>}
+                    {!dead && n.mood !== 'normal' && canMind && (
+                      <span className="mood-chip">
+                        {MOODS[n.mood].emoji}
+                        {MOODS[n.mood].name}
+                      </span>
+                    )}
                   </div>
-                )}
-              </div>
-            </button>
+                  <div className="sub">
+                    {dead ? `💔 ${n.blockReason ?? '已失联'}` : !canMind && n.mood !== 'normal' ? MOODS[n.mood].hint : c.bio}
+                  </div>
+                  {!dead && (
+                    <div className="favor-bar">
+                      <i style={{ width: `${n.favor}%` }} />
+                    </div>
+                  )}
+                </div>
+              </button>
+              {canDrop && (
+                <button
+                  onClick={() => {
+                    if (armed) {
+                      onDrop(c.id)
+                      setArmDrop(null)
+                    } else {
+                      setArmDrop(c.id)
+                    }
+                  }}
+                  onBlur={() => setArmDrop((cur) => (cur === c.id ? null : cur))}
+                  style={{
+                    position: 'absolute',
+                    right: 10,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: '4px 9px',
+                    borderRadius: 999,
+                    background: armed ? 'var(--red)' : 'var(--panel2)',
+                    color: armed ? '#fff' : 'var(--text-dim)',
+                    border: '1px solid var(--line)',
+                  }}
+                >
+                  {armed ? '确定拉黑?' : '不聊了'}
+                </button>
+              )}
+            </div>
           )
         })}
       </div>
