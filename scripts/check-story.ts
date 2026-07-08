@@ -13,7 +13,7 @@ import {
   findEnding,
   CODES,
 } from '../src/content'
-import { buildDateSession, buildOpinionScript, newGame } from '../src/engine/game'
+import { buildConfrontation, buildDateSession, buildOpinionScript, newGame } from '../src/engine/game'
 import { Script, Version } from '../src/engine/types'
 
 let errors = 0
@@ -101,6 +101,12 @@ for (const version of ['male', 'female'] as Version[]) {
       validateScript(buildOpinionScript(q, c), `${c.name}/opinion:${q.id}`, usedEndings)
     }
 
+    // 同居对峙剧本 × 角色
+    {
+      const s = newGame(version, 'putong', 42)
+      validateScript(buildConfrontation(s, c, '某人'), `${c.name}/confront`, usedEndings)
+    }
+
     // 约会模板 × 地点(好感拉满以触发表白注入,校验 cf_ 节点;多跑几个 seed 覆盖插曲/暧昧支线)
     for (let i = 0; i < c.dateSpots.length; i++) {
       for (const seed of [42, 7, 2026]) {
@@ -122,6 +128,11 @@ for (const version of ['male', 'female'] as Version[]) {
     s.npcs[id].stage = 'chatting'
     s.npcs[id].favor = 55
   }
+  // 让同居事件可触发:第一位角色升到确立+高好感
+  const first = Object.values(s.npcs)[0]
+  first.stage = 'confirmed'
+  first.favor = 90
+  first.dates = 4
   for (const e of getEvents(version)) {
     if (!e.eligible(s)) {
       console.log(`  ⚠️ 事件 ${e.id} 在标准测试态下不可触发(可能条件苛刻,请人工确认)`)

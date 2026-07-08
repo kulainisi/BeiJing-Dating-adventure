@@ -390,12 +390,133 @@ export function resetOutfit(s: GameState) {
   s.skills.image = PAIMIAN_BASE
 }
 
-/** 婚姻骰:与已确立对象的极限状态下,约会结束暗掷 */
-export function marriageRoll(s: GameState, profile: CharacterProfile): boolean {
+/** 当前同居对象(仅在还活跃时返回) */
+export function cohabitPartner(s: GameState): NpcState | null {
+  if (!s.flags.includes('cohabiting')) return null
+  const p = Object.values(s.npcs).find((n) => n.flags.includes('cohabit'))
+  if (!p) return null
+  const alive = ['chatting', 'dating', 'confirmed'].includes(p.stage)
+  return alive ? p : null
+}
+
+/**
+ * 结婚资格:同居 + 好感/真心/约会次数拉满 + 财力精力达标
+ * (钞能力出身可豁免精力要求——有钱能把婚礼全包出去)
+ */
+export function marriageEligible(s: GameState, profile: CharacterProfile): boolean {
   const npc = s.npcs[profile.id]
   if (npc.stage !== 'confirmed') return false
+  if (!npc.flags.includes('cohabit')) return false
   if (npc.favor < 98 || npc.dates < 5 || !npc.flags.includes(profile.trueFlag)) return false
-  return chance(0.08)
+  if (s.wallet < 20000) return false
+  if (s.maxEnergy < 4 && s.origin !== 'rich') return false
+  return true
+}
+
+/** 婚姻骰:极限状态下,约会结束暗掷 */
+export function marriageRoll(s: GameState, profile: CharacterProfile): boolean {
+  return marriageEligible(s, profile) && chance(0.08)
+}
+
+/** 同居对峙:被发现和别人暧昧,文化水平够高可以圆过去,否则拉黑分手 */
+export function buildConfrontation(
+  s: GameState,
+  partner: CharacterProfile,
+  otherName: string,
+): Script {
+  const nodes: NodeDef[] = [
+    {
+      id: 'a',
+      lines: [
+        {
+          who: 'nar',
+          text: `同居的家,是没有暗格的。你刚把手机扣在沙发上,${partner.name}端着水走过来,顺手把它翻了个面——屏幕还亮着,和${otherName}的对话框,停在最新一条。`,
+        },
+        { who: 'npc', text: '「聊得挺开心?」' },
+        { who: 'nar', text: '水杯放在桌上的声音很轻。轻得像审讯室的灯。' },
+      ],
+      danmaku: ['#seen'],
+      choices: [
+        {
+          text: '稳住呼吸,把这段聊天解释成一场无害的社交',
+          check: { skill: 'culture', dc: 14, pass: 'ok', fail: 'busted', crit: 'crit', fumble: 'fumble' },
+        },
+        {
+          text: '坦白:确实聊了。对不起,我把界限弄丢了',
+          effects: { favor: -18, awkward: 10 },
+          goto: 'honest',
+        },
+        {
+          text: '反问:你翻我手机?你不信任我?',
+          effects: { block: '同居后被抓包,还倒打一耙' },
+          danmaku: ['#block'],
+        },
+      ],
+    },
+    {
+      id: 'crit',
+      lines: [
+        { who: 'me', text: `「${otherName}?TA最近在帮我挑你的生日礼物。本来想瞒到下个月的——行吧,惊喜提前报废。」` },
+        { who: 'nar', text: '你语气笃定,细节丰满,连叹气的时机都恰到好处。' },
+        { who: 'npc', text: '「……真的?」' },
+        { who: 'nar', text: 'TA信了,还有点愧疚。你圆过去了,圆得漂亮,漂亮得让你自己心里发虚。' },
+      ],
+      effects: { favor: 2 },
+      end: true,
+    },
+    {
+      id: 'ok',
+      lines: [
+        { who: 'me', text: '「就是普通朋友聊两句,你看时间,都是白天,内容你随便翻。」' },
+        { who: 'npc', text: '「……行,信你一次。」' },
+        { who: 'nar', text: 'TA把水杯拿走了,门关得比平时响一点。这一页翻过去了,但书上留了折角。' },
+      ],
+      effects: { favor: -8 },
+      end: true,
+    },
+    {
+      id: 'busted',
+      lines: [
+        { who: 'nar', text: '你解释到第三句,时间线自己打了自己。' },
+        { who: 'npc', text: partner.blockLines[0] },
+        { who: 'nar', text: '那把钥匙被TA从你钥匙串上摘了下来,放在桌上,和水杯并排。' },
+        { who: 'sys', text: '💔 同居后还和别人暧昧,被当场抓包。分手,拉黑,搬家,一晚上办完。' },
+      ],
+      effects: { block: '同居后和别人暧昧,被当场抓包' },
+      danmaku: ['#block'],
+      end: true,
+    },
+    {
+      id: 'fumble',
+      lines: [
+        { who: 'nar', text: '慌乱中,你竟然说出了「你先冷静,TA只是个备胎」这种话。' },
+        { who: 'nar', text: '空气死了。你也是。' },
+        { who: 'npc', text: partner.blockLines[0] },
+        { who: 'sys', text: '💔 这句「备胎」,当晚被写进了小蓝书,没指名道姓,但小区都知道了。' },
+      ],
+      effects: { block: '同居劈腿被抓,嘴里还蹦出了「备胎」二字', awkward: 25 },
+      danmaku: ['#block', '#cringe'],
+      end: true,
+    },
+    {
+      id: 'honest',
+      lines: [
+        { who: 'npc', text: '「……至少你没编。」' },
+        { who: 'nar', text: 'TA在阳台站了很久。那晚你们背对背睡,中间隔着一条看不见的三八线。' },
+        { who: 'nar', text: '坦白保住了同居,但有些东西碎了,胶水是时间,工期未知。' },
+      ],
+      end: true,
+    },
+  ]
+  return {
+    id: 'confront',
+    kind: 'event',
+    title: '同居对峙',
+    bg: 'dinner',
+    npcId: partner.id,
+    nodes: Object.fromEntries(nodes.map((n) => [n.id, n])),
+    start: 'a',
+  }
 }
 
 /** 通用表白剧本(嵌入约会结尾),台词由角色档案提供 */

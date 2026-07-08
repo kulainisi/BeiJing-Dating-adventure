@@ -1,5 +1,6 @@
 import { chance } from './rng'
 import { confirmedList, isAlive } from './relations'
+import { marriageEligible } from './game'
 import { EndingResult, GameState } from './types'
 import { getCharacters } from '@/content'
 
@@ -14,8 +15,8 @@ export function settle(s: GameState): EndingResult {
   if (confirmed.length === 1) {
     const npc = confirmed[0]
     const profile = chars.find((c) => c.id === npc.id)!
-    // 极限状态的结算日补掷婚姻骰(20%)
-    if (npc.favor >= 98 && npc.dates >= 5 && npc.flags.includes(profile.trueFlag) && chance(0.2)) {
+    // 极限状态(含同居+财力精力)的结算日补掷婚姻骰(20%)
+    if (marriageEligible(s, profile) && chance(0.2)) {
       return { id: 'marriage', npcId: npc.id }
     }
     if (npc.flags.includes(profile.trueFlag)) {

@@ -448,6 +448,64 @@ const EVENTS: RandomEventDef[] = [
   },
 ]
 
+// 🏠 同居邀请(共有事件):确立关系+高好感后,低概率触发
+const cohabitEvent: RandomEventDef = {
+  id: 'cohabit',
+  once: true,
+  eligible: (s) =>
+    !s.flags.includes('cohabiting') &&
+    s.day >= 6 &&
+    Object.values(s.npcs).some((n) => n.stage === 'confirmed' && n.favor >= 80 && n.dates >= 3),
+  weight: () => 7,
+  build: (s) => {
+    const partner = Object.values(s.npcs).find(
+      (n) => n.stage === 'confirmed' && n.favor >= 80 && n.dates >= 3,
+    )
+    if (!partner) return null
+    const pn = nameOf(s, partner.id)
+    const sc = eventScript('ev_cohabit', '一把钥匙', 'walk', [
+      node('a', [
+        nar(`晚上,${pn}忽然发来一张照片:一把崭新的钥匙,拴着一个小小的钥匙扣。`),
+        npc('「我房子下季度到期,你那边合租也闹心……我算了笔账,两个人一起住,房租省一半。」'),
+        npc('「当然,账是借口。」'),
+        npc('「钥匙是真的。搬过来吗?」'),
+        nar('同居邀请。在北京,这不是一步,这是一大步——省下的是房租,交出去的是自由。'),
+      ], {
+        danmaku: ['#win'],
+        choices: [
+          {
+            text: '收下钥匙:好,我搬。周末就搬',
+            effects: { favor: 12, npcFlags: ['cohabit'], flags: ['cohabiting'] },
+            danmaku: ['#win'],
+            goto: 'yes',
+          },
+          {
+            text: '婉拒:我很想,但想再给彼此一点空间,别急',
+            effects: { favor: -8 },
+            goto: 'no',
+          },
+        ],
+      }),
+      node('yes', [
+        nar('搬家那天,北京难得的好天气。你的行李没几箱,TA却腾出了一半的衣柜。'),
+        npc('「丑话说前面:我的地盘,我的规矩——牙刷放左边,袜子不许乱丢,还有……」'),
+        npc('「手机,不设防。我们这种关系,经不起暗格。」'),
+        nar('从今晚起,你们共用一盏灯、一个冰箱、一份房租。也共用一份「被看见」的风险。'),
+        sys('🏠 已同居:每日房租减半;但在同一个屋檐下,和别人的暧昧将无处可藏。'),
+      ], { end: true }),
+      node('no', [
+        npc('「……哦,好。空间,嗯,我懂。」'),
+        nar(`TA收回了那张照片。钥匙扣在照片边缘晃了一下,像一句没说完的话。`),
+        nar('那晚TA没再发消息。有些邀请,拒绝一次,就不会有第二次了。'),
+      ], { end: true }),
+    ])
+    sc.npcId = partner.id
+    return sc
+  },
+}
+
+EVENTS.push(cohabitEvent)
+
 // 🎬 剧组修罗场(女版限定):制片人老莫 × 小演员顾一
 const crewDrama: RandomEventDef = {
   id: 'crew_drama',

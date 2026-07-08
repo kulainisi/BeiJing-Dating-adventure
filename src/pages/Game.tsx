@@ -16,7 +16,9 @@ import {
 } from '@/engine/types'
 import {
   buildChatSession,
+  buildConfrontation,
   buildDateSession,
+  cohabitPartner,
   doWork,
   liquorHint,
   marriageRoll,
@@ -25,6 +27,7 @@ import {
   touchNpc,
   tryInvite,
 } from '@/engine/game'
+import { chance } from '@/engine/rng'
 import { applyEffects, fateRoll, isAlive, refillPool } from '@/engine/relations'
 import { bumpMood, moodExtremeRoll, moodHint } from '@/engine/mood'
 import { checkAllBlocked, settle } from '@/engine/endings'
@@ -215,6 +218,34 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
     }
 
     if (ended) return endGame(ended.id, ended.npcId, ended.detail)
+
+    // 同居生效:房租分摊(只执行一次)
+    if (s.flags.includes('cohabiting') && !s.flags.includes('rent_split')) {
+      s.flags.push('rent_split')
+      if (s.rent > 0) {
+        s.rent = Math.round(s.rent / 2)
+        window.setTimeout(() => showToast(`🏠 同居生效:房租分摊,月租降至 ¥${s.rent}。`), 1400)
+      }
+    }
+
+    // 同居后和别人暧昧:有概率被同居对象发现(约会更容易露馅)
+    const partner = cohabitPartner(s)
+    if (
+      partner &&
+      sess.npcId &&
+      sess.npcId !== partner.id &&
+      sess.type !== 'event' &&
+      chance(sess.type === 'date' ? 0.6 : 0.35)
+    ) {
+      const partnerProfile = getCharacter(s.version, partner.id)
+      const otherName = getCharacter(s.version, sess.npcId).name
+      const sc = buildConfrontation(s, partnerProfile, otherName)
+      saveRun(s)
+      setPhase({ t: 'session', sess: { script: sc, npcId: partner.id, type: 'event' } })
+      force()
+      return
+    }
+
     backToHub()
   }
 
@@ -333,6 +364,7 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
           sess={phase.sess}
           onFavor={showFavor}
           onDanmaku={fireDanmaku}
+          onNewMatch={(id) => announceMatch(id, 2200)}
           onPendingEnding={(e) => (pendingEnding.current = e)}
           onFinish={() => finishSession(phase.sess)}
           force={force}
@@ -643,6 +675,7 @@ interface SessionViewProps {
   sess: Session
   onFavor: (d: number) => void
   onDanmaku: (keys?: string[]) => void
+  onNewMatch: (id: string) => void
   onPendingEnding: (e: { id: string; npcId?: string; detail?: string }) => void
   onFinish: () => void
   force: () => void
@@ -655,7 +688,7 @@ interface LogLine {
 
 let logKey = 0
 
-function SessionView({ s, sess, onFavor, onDanmaku, onPendingEnding, onFinish, force }: SessionViewProps) {
+function SessionView({ s, sess, onFavor, onDanmaku, onNewMatch, onPendingEnding, onFinish, force }: SessionViewProps) {
   const { script } = sess
   const npc: NpcState | null = sess.npcId ? s.npcs[sess.npcId] : null
   const profile: CharacterProfile | null = sess.npcId ? getCharacter(s.version, sess.npcId) : null
@@ -681,6 +714,7 @@ function SessionView({ s, sess, onFavor, onDanmaku, onPendingEnding, onFinish, f
       const fb = applyEffects(s, npc, profile, node.effects)
       onFavor(fb.favorDelta)
       if (fb.blocked) addDeath(fb.blocked)
+      if (fb.newMatch) onNewMatch(fb.newMatch)
       if (fb.ended) onPendingEnding({ id: fb.ended, npcId: sess.npcId ?? undefined })
       force()
     }
@@ -771,6 +805,7 @@ function SessionView({ s, sess, onFavor, onDanmaku, onPendingEnding, onFinish, f
       if (fb.tasteLine) appendLine({ who: 'nar', text: fb.tasteLine })
       if (fb.banHit && fb.banHit.first) appendLine({ who: 'nar', text: '……不知道为什么,TA的回复突然变得敷衍了。' })
       if (fb.ended) onPendingEnding({ id: fb.ended, npcId: sess.npcId ?? undefined })
+      if (fb.newMatch) onNewMatch(fb.newMatch)
       if (fb.blocked) {
         blocked = fb.blocked
         addDeath(fb.blocked)

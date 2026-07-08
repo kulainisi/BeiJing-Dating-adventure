@@ -37,8 +37,12 @@ npm run check-story  # ★ 内容校验:任何剧情改动后必跑,抓断头节
   practical/romantic/flex/frugal/indie/corporate/chill/trad/equal/zhi(冒犯发言)/sincere
 - 每角色必有:intro + ≥3 topics + dateSpots(3-5个) + moodLines + blockLines + confirmYes/No
   + spicy + he/trueHe + trueFlag(在某个topic选项里用 npcFlags 发放,决定结算走普通HE还是真爱HE)
-- 特殊结算:闪婚 marriage(好感≥98+trueFlag+约会≥5,约会后8%/结算日20%);seaking(≥3人好感≥70
-  且无人确立);留宿 stayed flag 会提高真结局门槛(Coco 除外,她的真结局反而需要它)
+- 同居系统:确立关系+好感≥80+约会≥3后低概率触发同居事件(cohabit事件,npcFlag 'cohabit'+
+  全局flag 'cohabiting',房租减半);同居后和别人聊天35%/约会60%被发现→同居对峙
+  (buildConfrontation:文化水平dc14圆谎,失败=拉黑分手)
+- 特殊结算:闪婚 marriage 前置=同居+好感≥98+trueFlag+约会≥5+存款≥2万+精力≥4(钞能力出身豁免精力),
+  约会后8%/结算日20%;seaking(≥3人好感≥70且无人确立);留宿 stayed flag 会提高真结局门槛
+  (Coco 除外,她的真结局反而需要它)
 - 跨版本暗号在 shared.ts 的 CODES,对应角色的 hiddenTopics.codeId;结局暗号印在 he.secretCode
 - 剧本 DSL 与新增角色/事件/看法题的详细步骤见 README.md「内容更新指南」
 - 中文文案用直角引号「」,不要在单引号字符串里嵌套中文单引号(会破坏TS语法)
