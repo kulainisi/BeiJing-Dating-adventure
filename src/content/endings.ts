@@ -2,17 +2,59 @@ import { EndingDef, Version } from '@/engine/types'
 import { MALE_CHARS } from './male'
 import { FEMALE_CHARS } from './female'
 
-/** 全局结局(与版本无关) */
-const GLOBAL_ENDINGS: EndingDef[] = [
+/** 全局结局(部分徽章按版本性别化) */
+function genGlobal(version: Version): EndingDef[] {
+  const sea = version === 'male' ? '海王' : '海后'
+  return [
   {
     id: 'time_manager',
     rank: 'win',
     title: '时间管理大师',
     stars: 3,
-    badge: '海王(已实名认证)',
+    badge: `时间管理大师·${sea}(已实名认证)`,
     comment:
       '你同时确立了多段关系,且直到结算日都没被发现。这是胜利,也是一份迟早会爆的雷。网友辣评:建议直接保送《甄嬛传》选角。',
     hint: '同时和两人以上确立关系并活到最后一天',
+  },
+  {
+    id: 'seaking',
+    rank: 'draw',
+    title: '持证上岗',
+    stars: 3,
+    badge: `京圈${sea}(持证)`,
+    comment:
+      `十四天,你同时吊着三条以上的高好感线,却谁也没有确立。雨露均沾,颗粒无收。鱼塘水质优良,可惜塘主今晚也是一个人回家。恭喜获得${sea}执业资格,证书自动续期。`,
+    hint: '同时保持三人以上高好感,但谁都不确立',
+  },
+  {
+    id: 'marriage',
+    rank: 'win',
+    title: '闪婚:北京爱情故事(实体版)',
+    stars: 5,
+    badge: '民政局速通纪录保持者',
+    comment:
+      '所有指标拉到极限的那天,TA忽然说:「后天民政局人少,我查过了。」于是北京多了一对领了证才想起来没求婚的人。朝阳区民政局在你们身后默默亮起了「办结」二字。',
+    hint: '把一段关系推到所有指标的极限,然后交给命运',
+  },
+  {
+    id: 'euphoria',
+    rank: 'egg',
+    title: '上头了',
+    stars: 2,
+    badge: '恋爱脑晚期(已确诊)',
+    comment:
+      '连日的甜让你的多巴胺严重超标。你在工位上放声大笑,当众官宣「我恋爱了」,给全组订了奶茶,并顺手回绝了老板的周末加班——用一首诗。人事找你谈话那天,你还在笑。恋爱使人勇敢,勇敢使人失业。',
+    hint: '心情好到飘起来的时候,小心乐极生悲',
+  },
+  {
+    id: 'emo_quit',
+    rank: 'lose',
+    title: '删号回老家',
+    stars: 1,
+    badge: '北漂毕业生',
+    comment:
+      '连续的失望攒够了额度。某个凌晨,你安静地卸载了「心动Beijing」,退了房,买了张回老家的高铁票。北京不欠你,但你也不欠北京。车过山海关的时候,你睡着了,这些天第一次睡得那么沉。',
+    hint: '心情跌到谷底的时候,人是会突然想通的',
   },
   {
     id: 'goodcard',
@@ -61,8 +103,8 @@ const GLOBAL_ENDINGS: EndingDef[] = [
     stars: 0,
     badge: '回龙观菜市场VIP',
     comment:
-      '你的余额在北京的物价面前光荣牺牲。接下来的日子:自热小火锅,拼好饭,和对着约会软件叹气。爱情诚可贵,余额价更高。',
-    hint: '把钱包花到破产',
+      '你的余额归零了。在北京,钱包见底的那一刻,一切浪漫立即停摆:约会、房租、甚至下一顿饭。爱情诚可贵,余额价更高——钱归零,就寄。',
+    hint: '任何时刻钱归零,当场败北',
   },
   {
     id: 'awkward_full',
@@ -125,7 +167,8 @@ const GLOBAL_ENDINGS: EndingDef[] = [
       'TA突然说:「我就是觉得,是你了。」没有原因,没有铺垫,概率约等于西二旗地铁有座。你的一切都不是自己挣的,但幸福是真的。',
     hint: '天命骰的另一面(约1%)',
   },
-]
+  ]
+}
 
 /** 每个角色的普通HE与真爱HE,由角色档案生成 */
 function charEndings(version: Version): EndingDef[] {
@@ -157,7 +200,7 @@ function charEndings(version: Version): EndingDef[] {
 }
 
 export function getEndings(version: Version): EndingDef[] {
-  return [...GLOBAL_ENDINGS, ...charEndings(version)]
+  return [...genGlobal(version), ...charEndings(version)]
 }
 
 export function getAllEndings(): { version: Version; list: EndingDef[] }[] {
@@ -167,8 +210,8 @@ export function getAllEndings(): { version: Version; list: EndingDef[] }[] {
   ]
 }
 
-export function findEnding(id: string): EndingDef | undefined {
-  return [...GLOBAL_ENDINGS, ...charEndings('male'), ...charEndings('female')].find(
+export function findEnding(id: string, version: Version = 'male'): EndingDef | undefined {
+  return [...genGlobal(version), ...charEndings('male'), ...charEndings('female')].find(
     (e) => e.id === id,
   )
 }

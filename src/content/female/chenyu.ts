@@ -13,6 +13,7 @@ export const chenyu: CharacterProfile = {
   deathTags: ['frugal'],
   decay: 5,
   mainSkill: 'culture',
+  spicy: 0.1,
   confirmYes: '「我店里那面留言墙,你注意过吗?最高那张一直空着。」他递给你一支笔,「留给店主最重要的人。写吧。」',
   confirmNo: '「你像一杯很好的耶加雪菲……但我现在的状态,只配得上速溶。抱歉。」',
   moodLines: {
@@ -130,9 +131,10 @@ export const chenyu: CharacterProfile = {
     },
   ],
   dateSpots: [
-    { template: 'expo', location: '798·UCCA', price: 180, label: '798看展(主理人补课日)' },
-    { template: 'citywalk', location: '五道营胡同', price: 80, label: '胡同Citywalk(他的地盘)' },
-    { template: 'dinner', location: '胡同私房菜', price: 320, label: '私房菜(主理人带路)' },
+    { template: 'expo', location: '798·UCCA', price: 240, label: '798看展(主理人补课日)' },
+    { template: 'citywalk', location: '五道营胡同', price: 100, label: '胡同Citywalk(他的地盘)' },
+    { template: 'dinner', location: '胡同私房菜', price: 600, label: '私房菜(主理人带路)' },
+    { template: 'citywalk', location: '天坛', price: 60, label: '天坛走走(在地文化课)' },
   ],
   he: {
     title: '常客',

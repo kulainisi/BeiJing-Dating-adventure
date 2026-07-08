@@ -1,5 +1,5 @@
 import { CharacterProfile, DateSpot, GameState, NodeDef, NpcState, Script, TemplateId } from '@/engine/types'
-import { pick } from '@/engine/rng'
+import { chance, pick } from '@/engine/rng'
 import { me, nar, node, npc, scene, sys } from './util'
 
 export type DateTemplate = (
@@ -11,9 +11,55 @@ export type DateTemplate = (
 
 const loves = (p: CharacterProfile, t: string) => p.loves.includes(t)
 
+/** 暧昧支线(SFW):散场后的「上来坐坐」三岔口,按角色 spicy 系数概率出现 */
+function afterpartyNodes(p: CharacterProfile): NodeDef[] {
+  return [
+    node('sp_ask', [
+      nar('散场了。走到楼下,TA停住脚步,手指绕着包带转了两圈。'),
+      npc('「那个……我家就在前面。我家猫最近有点抑郁,你要不要上来,帮我看看它?」'),
+      nar('北京的深夜,猫的心理健康突然变得很重要。'),
+    ], {
+      choices: [
+        {
+          text: '上去看猫。毕竟猫的事,是大事',
+          effects: { favor: 10, npcFlags: ['stayed', 'tension'] },
+          goto: 'sp_up',
+        },
+        {
+          text: '体面告辞:今晚到这刚刚好,美好的东西我想留着慢慢来',
+          effects: { favor: p.loves.includes('sincere') || p.loves.includes('trad') ? 8 : 3, npcFlags: ['tension'] },
+          goto: 'sp_no',
+        },
+        {
+          text: '慌乱推辞:啊这个我、我明天还要开早会——',
+          effects: { favor: -4, awkward: 12 },
+          goto: 'sp_awk',
+        },
+      ],
+    }),
+    node('sp_up', [
+      nar('猫确实在。它用看智者的眼神看了你们三秒,然后跳上窗台背过身去。'),
+      nar('灯关了。窗外是北京凌晨两点的车流声。'),
+      sys('—— 此处剧情已由猫代为保管 ——'),
+      nar('第二天早上,TA的语气和平时不太一样了,像一杯加了奶的咖啡。'),
+    ], { end: true }),
+    node('sp_no', [
+      npc('「……行啊。」'),
+      nar('TA低头笑了一下,「慢慢来」这三个字,TA走进楼门前又回味了一遍。'),
+      nar('有时候,不上去比上去更进一步。'),
+    ], { end: true }),
+    node('sp_awk', [
+      npc('「哦——早会,重要重要。」'),
+      nar('TA的笑容体面,你的借口拙劣。出租车开出五百米你才想起来:明天是周六。'),
+    ], { end: true }),
+  ]
+}
+
 // ============ 🍺 酒局 ============
 const bar: DateTemplate = (p, n, s, spot) => {
   const blackoutOutcome = pick(['bo_confess', 'bo_dance', 'bo_cry'])
+  const spicyOn = n.favor >= 50 && chance(p.spicy ?? 0.1)
+  const afterGoto = spicyOn ? 'sp_ask' : 'wrap'
   const nodes: NodeDef[] = [
     node('a', [
       nar(`${spot.location}。霓虹灯下人声鼎沸,${p.name}已经到了,面前摆着两杯酒。`),
@@ -61,9 +107,9 @@ const bar: DateTemplate = (p, n, s, spot) => {
         },
       ],
     }),
-    node('r2_deep', [nar('你说完,桌上安静了几秒。'), npc('「……敬那个冬天。」'), nar('TA轻轻碰了你的杯子。有些东西不一样了。')], { next: 'wrap' }),
-    node('r2_light', [npc('「行,不聊沉重的。」'), nar('气氛依旧热闹,但只是热闹。')], { next: 'wrap' }),
-    node('r2_drink_ok', [nar('这一杯下去,天灵盖有点发麻,但你稳住了。'), npc('「哈哈哈哈好!你这个朋友我交定了——呸,谁要跟你只做朋友。」')], { effects: { favor: 9 }, next: 'wrap' }),
+    node('r2_deep', [nar('你说完,桌上安静了几秒。'), npc('「……敬那个冬天。」'), nar('TA轻轻碰了你的杯子。有些东西不一样了。')], { next: afterGoto }),
+    node('r2_light', [npc('「行,不聊沉重的。」'), nar('气氛依旧热闹,但只是热闹。')], { next: afterGoto }),
+    node('r2_drink_ok', [nar('这一杯下去,天灵盖有点发麻,但你稳住了。'), npc('「哈哈哈哈好!你这个朋友我交定了——呸,谁要跟你只做朋友。」')], { effects: { favor: 9 }, next: afterGoto }),
 
     node('blackout', [
       nar('你只记得那杯酒下肚之后,世界开始旋转。'),
@@ -88,6 +134,7 @@ const bar: DateTemplate = (p, n, s, spot) => {
 
     node('wrap', [nar(`夜色渐深,${spot.location}的灯还亮着。${p.name}拿起外套,看了你一眼。`)], { end: true }),
   ]
+  if (spicyOn) nodes.push(...afterpartyNodes(p))
   return scene(`date_bar_${p.id}`, '酒局', spot.location, 'bar', nodes)
 }
 
@@ -368,6 +415,186 @@ const shopping: DateTemplate = (p, n, s, spot) => {
   return scene(`date_shop_${p.id}`, '购物局', spot.location, 'shop', nodes)
 }
 
+// ============ 🎤 KTV ============
+const ktv: DateTemplate = (p, n, s, spot) => {
+  const nodes: NodeDef[] = [
+    node('a', [
+      nar(`${spot.location}。包间里灯球旋转,点歌屏亮着。${p.name}把麦克风递给你:`),
+      npc('「规矩:第一首歌定基调。你先来。」'),
+    ], {
+      choices: [
+        {
+          text: '点一首高难度的,赌上今晚的麦霸尊严',
+          check: { skill: 'mouth', dc: 13, pass: 'sing_ok', fail: 'sing_fail', crit: 'sing_crit', fumble: 'sing_fumble' },
+        },
+        { text: '点一首适合合唱的:「这首得两个人唱才好听」', effects: { favor: 9, npcFlags: ['tension'] }, goto: 'duet' },
+        { text: '把麦克风递回去:你先,我负责喝彩和切歌防御', effects: { favor: 5, care: true }, goto: 'listen' },
+      ],
+    }),
+    node('sing_crit', [
+      nar('前奏一起,你开口的瞬间,TA拿零食的手停在了半空。'),
+      nar('副歌你稳稳顶了上去,尾音收得干干净净。包间门口路过的服务员都探头看了一眼。'),
+      npc('「等会儿,你是不是偷偷练过?!再唱一首!点歌权全给你!」'),
+    ], { effects: { favor: 14 }, next: 'beat2' }),
+    node('sing_ok', [nar('你发挥稳定,该上的上,该收的收。'), npc('「可以啊,麦霸认证通过。」')], { effects: { favor: 8 }, next: 'beat2' }),
+    node('sing_fail', [
+      nar('副歌那个高音,你上去了——用生命上去的。声音劈成了两半,一半留在原调,一半上了天。'),
+      npc('「噗——咳咳,没事没事,继续!勇气可嘉!」'),
+    ], { effects: { favor: -4, awkward: 12 }, danmaku: ['#cringe'], next: 'beat2' }),
+    node('sing_fumble', [
+      nar('你点了首粤语歌,并用你自创的「谐音粤语」完成了整首演唱。'),
+      nar(`${p.name}笑到滑到沙发底下,举着手机说要发到家族群。`),
+      npc('「哈哈哈哈哈这是什么语言!!快拦住我,我真的要发了!」'),
+    ], { effects: { favor: 3, awkward: 20 }, danmaku: ['#cringe'], next: 'beat2' }),
+    node('duet', [
+      nar('前奏响起,两支麦克风,一首老情歌。'),
+      nar('唱到第二段主歌,你们的视线在旋转的灯球下撞了一下,又各自弹开。'),
+      npc('「……唱歌就唱歌,你看我干嘛。」(TA自己也在看)'),
+    ], { next: 'beat2' }),
+    node('listen', [nar('TA唱歌真不错。你在副歌处准时递水、点了波「气氛灯」,并成功拦截了隔壁想切歌的手。'), npc('「你这个捧场技术,专业级的。下次唱K还叫你。」')], { effects: { favor: 6 }, next: 'beat2' }),
+    node('beat2', [
+      nar('唱累了,TA翻着点歌屏突然说:'),
+      npc('「点一首能代表你现在心情的歌。别耍滑,我会听歌词的。」'),
+    ], {
+      choices: [
+        { text: '点了一首歌词露骨的情歌,直球', effects: { favor: 8, npcFlags: ['tension'] }, goto: 'w1' },
+        { text: '点了一首《好运来》,打死不表态', effects: { favor: 3 }, goto: 'w2' },
+        {
+          text: '点一首冷门但恰到好处的歌,歌词句句在点上',
+          require: { skill: 'culture', min: 6, gray: '文化水平不足:你的歌单只有抖音热歌TOP50' },
+          effects: { favor: 12, npcFlags: ['deep_talk'] },
+          danmaku: ['#smart'],
+          goto: 'w3',
+        },
+      ],
+    }),
+    node('w1', [npc('「……你这歌,选得可真敢。」'), nar('TA没切歌,还跟着轻轻哼了两句。')], { next: 'wrap' }),
+    node('w2', [npc('「好运来?!」'), npc('「行,滑不留手。这题你逃过去了,下次可没这么容易。」')], { next: 'wrap' }),
+    node('w3', [nar('歌放到一半,TA忽然安静下来,认真听完了整首。'), npc('「这首歌……你怎么找到的。感觉被说中了。」')], { next: 'wrap' }),
+    node('wrap', [nar(`走出${spot.location},耳朵里还有回声。${p.name}嗓子微哑,看你的眼神却很亮。`)], { end: true }),
+  ]
+  return scene(`date_ktv_${p.id}`, 'KTV', spot.location, 'ktv', nodes)
+}
+
+// ============ 🕵️ 剧本杀 ============
+const jubensha: DateTemplate = (p, n, s, spot) => {
+  const nodes: NodeDef[] = [
+    node('a', [
+      nar(`${spot.location}。DM发下剧本,你翻开一看,命运的安排:你和${p.name}抽到了「剧中夫妻」。`),
+      npc('「哈?我们是两口子?」TA挑了挑眉,「行啊,那这局你得护着我。」'),
+    ], {
+      choices: [
+        {
+          text: '瞬间入戏:执起TA的手背轻拍,「夫人,委屈你了」',
+          check: { skill: 'mouth', dc: 12, pass: 'act_ok', fail: 'act_fail', crit: 'act_crit' },
+        },
+        { text: '认真研读剧本,先摸清任务和时间线再说', effects: { favor: 4 }, goto: 'beat2' },
+      ],
+    }),
+    node('act_crit', [
+      nar('你从口音到眼神完全化身剧中人,一句「夫人,家里的事,有我」说得全桌起哄。'),
+      npc('「……你别入戏太深啊。」'),
+      nar('TA嘴上嫌弃,耳朵红了,并在接下来的三小时里叫了你十七次「相公/娘子」。'),
+    ], { effects: { favor: 13, npcFlags: ['tension'] }, danmaku: ['#win'], next: 'beat2' }),
+    node('act_ok', [npc('「哟,还挺会演。」'), nar('TA顺势挽住你的手臂:「走吧,咱们对口供去。」戏里戏外的边界,开始变得模糊。')], { effects: { favor: 9, npcFlags: ['tension'] }, next: 'beat2' }),
+    node('act_fail', [
+      nar('你一句「夫人」出口,自己先绷不住笑场了,像大型尬演现场。'),
+      npc('「哈哈哈哈你不行,你这演技横店门口发传单都不要。」'),
+    ], { effects: { favor: 0, awkward: 8 }, next: 'beat2' }),
+    node('beat2', [
+      nar('第二幕搜证结束,DM宣布:本局凶手,就在你们「夫妻」之中。'),
+      nar('你翻开自己的底牌——**你就是凶手**。而剧本里,你的动机是为了保护「妻子/丈夫」。'),
+    ], {
+      choices: [
+        {
+          text: '面不改色,把全场怀疑引向别人,连TA也骗',
+          check: { skill: 'mind', dc: 14, pass: 'lie_ok', fail: 'lie_fail', crit: 'lie_crit' },
+        },
+        { text: '私下把底牌亮给TA:「我是凶手。但动机你看看。」', effects: { favor: 10, npcFlags: ['deep_talk'] }, goto: 'honest' },
+      ],
+    }),
+    node('lie_crit', [
+      nar('复盘环节,DM揭晓凶手,全桌哗然。TA瞪圆了眼睛看你。'),
+      npc('「不是——你从头骗到尾?!连我都骗?!」'),
+      npc('「……好可怕。好可怕,但是,好帅。」'),
+    ], { effects: { favor: 15 }, danmaku: ['#win'], next: 'wrap' }),
+    node('lie_ok', [nar('你成功把票导向了法医。揭晓时TA捶了你一下:「行啊你,深藏不露!」')], { effects: { favor: 9 }, next: 'wrap' }),
+    node('lie_fail', [
+      nar('你撒谎时的眼神飘了0.5秒,被TA当场锁定:「就是你!TA眼神虚了!」'),
+      nar('全桌跟票,你一轮出局。'),
+      npc('「嘿嘿,你这点道行,在我面前不够看。」'),
+    ], { effects: { favor: 4, awkward: 6 }, next: 'wrap' }),
+    node('honest', [
+      nar('TA看完你的动机页,沉默了几秒。'),
+      npc('「剧本里你为了我杀人,现实里你为了我弃赛。」'),
+      npc('「这局咱们输了,但你这个人,赢了点什么。」'),
+    ], { next: 'wrap' }),
+    node('wrap', [nar(`散场,${spot.location}门口的风一吹,戏散了,人还有点没出戏。${p.name}看了你一眼,像在看剧本外的什么。`)], { end: true }),
+  ]
+  return scene(`date_jbs_${p.id}`, '剧本杀', spot.location, 'jubensha', nodes)
+}
+
+// ============ 🎢 游乐园 ============
+const park: DateTemplate = (p, n, s, spot) => {
+  const spicyOn = n.favor >= 45 && chance(Math.min(0.5, (p.spicy ?? 0.1) + 0.15))
+  const nodes: NodeDef[] = [
+    node('a', [
+      nar(`${spot.location}。热门项目排队提示:120分钟。两小时,考验一段关系的黄金时长。`),
+      npc('「两小时……你可别让我尬站着。」'),
+    ], {
+      choices: [
+        {
+          text: '启动话题永动机:从「猜前面情侣谈了多久」聊到人类学',
+          check: { skill: 'mouth', dc: 12, pass: 'queue_ok', fail: 'queue_fail', crit: 'queue_crit' },
+        },
+        { text: '掏出提前买的快速通行票:排什么队,咱们走VIP通道', effects: { wallet: -240, favor: 10 }, danmaku: ['#rich'], goto: 'queue_vip' },
+        { text: '提议玩「谁先笑谁输」,输的请喝奶茶', effects: { favor: 7 }, goto: 'queue_game' },
+      ],
+    }),
+    node('queue_crit', [nar('两小时像二十分钟。你们从路人职业猜到宇宙起源,笑到前面的情侣频频回头。'), npc('「完了,跟你聊天有点上瘾。」')], { effects: { favor: 13, npcFlags: ['deep_talk'] }, next: 'coaster' }),
+    node('queue_ok', [nar('你的话题库存撑住了两小时,中间只冷场了两次,都被你用零食救回来了。')], { effects: { favor: 7 }, next: 'coaster' }),
+    node('queue_fail', [nar('第四十分钟,话题耗尽。你们并排刷了八十分钟手机,像一对结婚二十年的夫妻。'), npc('「……下次还是买快速票吧。」')], { effects: { favor: -6, awkward: 10 }, next: 'coaster' }),
+    node('queue_vip', [npc('「你居然连这个都备好了?!」'), nar('从两小时的队伍旁边走过时,TA的排面值和你的一起飙升。')], { next: 'coaster' }),
+    node('queue_game', [nar('第三回合,你用一个眼神杀获胜。TA笑到扶栏杆,输掉了一杯奶茶和一点点心防。')], { next: 'coaster' }),
+    node('coaster', [
+      nar('过山车。爬升到最高点前的静止,是人类表情管理的终极考场。'),
+      npc('「诶,一会儿出片的抓拍点,就在第一个俯冲!」'),
+    ], {
+      choices: [
+        {
+          text: '全程绷住表情,对着抓拍镜头比了个从容的耶',
+          check: { skill: 'image', dc: 13, pass: 'photo_ok', fail: 'photo_fail', crit: 'photo_ok' },
+        },
+        { text: '不管形象,和TA一起放声尖叫,叫得比谁都野', effects: { favor: 8 }, goto: 'scream' },
+      ],
+    }),
+    node('photo_ok', [nar('出片处,大屏上你的表情从容得像在等电梯,旁边的TA面目全非。'), npc('「不行,这张必须买!裱起来!你是人吗!」')], { effects: { favor: 10, wallet: -50 }, next: spicyOn ? 'ghost' : 'wrap' }),
+    node('photo_fail', [
+      nar('出片处,大屏上你的脸被重力拉扯成了一张行为艺术,舌头不知为何是出来的。'),
+      npc('「哈哈哈哈哈哈这张我买了!!当表情包!!」'),
+      nar('你的形象死了,但气氛活了。'),
+    ], { effects: { favor: 4, awkward: 14 }, danmaku: ['#cringe'], next: spicyOn ? 'ghost' : 'wrap' }),
+    node('scream', [nar('你们的尖叫在俯冲段完美和声。下车后相视一眼,同时笑出声。'), npc('「你叫得比我还大声!哈哈哈哈嗓子都劈了!」')], { effects: { favor: 7 }, next: spicyOn ? 'ghost' : 'wrap' }),
+    node('ghost', [
+      nar('天黑了,最后一个项目:鬼屋。'),
+      nar('进门三十秒,一只「贞子」从侧面爬出。黑暗里,TA一把攥住了你的胳膊,整个人贴了过来。'),
+    ], {
+      choices: [
+        { text: '稳住,把TA护在身侧:「别怕,看脚下,跟我走」', effects: { favor: 12, npcFlags: ['tension'] }, danmaku: ['#win'], goto: 'g1' },
+        { text: '你叫得比TA还大声,反手抓住了TA', effects: { favor: 2, awkward: 12 }, goto: 'g2' },
+      ],
+    }),
+    node('g1', [
+      nar('出口的光亮起来时,TA才发现自己一直没松手。'),
+      npc('「……刚才,就是本能反应啊。」'),
+      nar('TA说这话时没看你,手却是慢慢松开的,一根手指一根手指的那种慢。'),
+    ], { next: 'wrap' }),
+    node('g2', [npc('「你到底谁怕鬼?!哈哈哈哈哈笑死我了!」'), nar('从鬼屋出来,TA扶着墙笑了三分钟。你社死了,但奇怪的是,距离近了。')], { next: 'wrap' }),
+    node('wrap', [nar(`夜场的烟花在${spot.location}上空炸开。${p.name}仰着头,侧脸被烟花照亮又暗下去。`)], { end: true }),
+  ]
+  return scene(`date_park_${p.id}`, '游乐园', spot.location, 'park', nodes)
+}
+
 export const TEMPLATES: Record<TemplateId, DateTemplate> = {
   bar,
   expo,
@@ -375,4 +602,7 @@ export const TEMPLATES: Record<TemplateId, DateTemplate> = {
   citywalk,
   sport,
   shopping,
+  ktv,
+  jubensha,
+  park,
 }

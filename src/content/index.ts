@@ -2,7 +2,7 @@ import { CharacterProfile, OpinionQ, RandomEventDef, Script, TemplateId, Version
 import { MALE_CHARS } from './male'
 import { FEMALE_CHARS } from './female'
 import { OPINIONS } from './opinions'
-import { GENERIC_CHATS } from './generic'
+import { GENERIC_CHATS, INTERLUDES, SPICY_CHATS } from './generic'
 import { TEMPLATES, DateTemplate } from './scenes'
 import { getEventsFor, findEvent } from './events'
 
@@ -27,6 +27,14 @@ export function getOpinions(): OpinionQ[] {
 
 export function getGenericChats(): Script[] {
   return GENERIC_CHATS
+}
+
+export function getSpicyChats(): Script[] {
+  return SPICY_CHATS
+}
+
+export function getInterludes(): Script[] {
+  return INTERLUDES
 }
 
 export function getTemplate(t: TemplateId): DateTemplate {

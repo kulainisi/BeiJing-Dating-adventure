@@ -1,18 +1,154 @@
 // ============ 基础枚举 ============
 export type Version = 'male' | 'female'
+/** 内容层剧本沿用的检定属性 id(引擎映射:mouth/mind/culture→文化水平,image→排面,liquor→隐藏酒量) */
 export type SkillId = 'mouth' | 'mind' | 'liquor' | 'culture' | 'image' | 'money'
 export type MoodId = 'normal' | 'great' | 'hungover' | 'slacking' | 'grumpy'
-export type Stage = 'chatting' | 'dating' | 'confirmed' | 'blocked' | 'ghosted' | 'faded'
-export type TemplateId = 'bar' | 'expo' | 'dinner' | 'citywalk' | 'sport' | 'shopping'
+export type Stage = 'locked' | 'chatting' | 'dating' | 'confirmed' | 'blocked' | 'ghosted' | 'faded'
+export type TemplateId =
+  | 'bar'
+  | 'expo'
+  | 'dinner'
+  | 'citywalk'
+  | 'sport'
+  | 'shopping'
+  | 'ktv'
+  | 'jubensha'
+  | 'park'
+export type OriginId = 'normal' | 'rich' | 'energetic'
+export type EduId = 'gaozhi' | 'putong' | 'tiyu'
 
-export const SKILLS: { id: SkillId; name: string; emoji: string; desc: string }[] = [
-  { id: 'mouth', name: '嘴力', emoji: '💬', desc: '话术检定、化解尴尬、圆谎' },
-  { id: 'mind', name: '心眼子', emoji: '🧠', desc: '识破海王、读潜台词、看穿情绪' },
-  { id: 'liquor', name: '酒量', emoji: '🍺', desc: '酒局血条,北京应酬硬通货' },
-  { id: 'culture', name: '文化值', emoji: '🎨', desc: '看展聊乐队,装懂会被识破' },
-  { id: 'image', name: '形象管理', emoji: '😎', desc: '初见好感基数、出片率' },
-  { id: 'money', name: '钞能力', emoji: '💰', desc: '决定开局资金,北京物价真实还原' },
+/** 检定属性的展示名(暗骰原则下仅用于置灰理由等文案) */
+export const SKILL_DISPLAY: Record<SkillId, { name: string; emoji: string }> = {
+  mouth: { name: '文化水平', emoji: '🎓' },
+  mind: { name: '文化水平', emoji: '🎓' },
+  culture: { name: '文化水平', emoji: '🎓' },
+  image: { name: '排面', emoji: '😎' },
+  liquor: { name: '酒量', emoji: '🍺' },
+  money: { name: '钞能力', emoji: '💰' },
+}
+
+// ============ 开局:文化三档 ============
+export interface EduTier {
+  id: EduId
+  name: string
+  emoji: string
+  culture: number
+  desc: string
+  salaryMul: number
+  walletMod: number
+  liquorMod: number
+  sleepAwkBonus: number
+}
+
+export const EDU_TIERS: EduTier[] = [
+  {
+    id: 'gaozhi',
+    name: '高知',
+    emoji: '🎓',
+    culture: 7,
+    desc: '文化水平 7 · 月薪x1.3(名校溢价) · 存款 -2000(读书读的)',
+    salaryMul: 1.3,
+    walletMod: -2000,
+    liquorMod: 0,
+    sleepAwkBonus: 0,
+  },
+  {
+    id: 'putong',
+    name: '普通青年',
+    emoji: '📖',
+    culture: 5,
+    desc: '文化水平 5 · 无修正,主打一个平凡',
+    salaryMul: 1,
+    walletMod: 0,
+    liquorMod: 0,
+    sleepAwkBonus: 0,
+  },
+  {
+    id: 'tiyu',
+    name: '体育生',
+    emoji: '🏀',
+    culture: 3,
+    desc: '文化水平 3 · 存款 +1000 · 酒量天赋异禀 · 睡一觉啥尴尬都忘了',
+    salaryMul: 1,
+    walletMod: 1000,
+    liquorMod: 2,
+    sleepAwkBonus: 10,
+  },
 ]
+
+// ============ 开局:投胎骰(隐藏预设,抽中才揭晓) ============
+export interface Origin {
+  id: OriginId
+  name: string
+  emoji: string
+  weight: number
+  energy: number
+  wallet: number
+  rent: number
+  salary: number
+  reveal: string
+}
+
+export const ORIGINS: Origin[] = [
+  {
+    id: 'normal',
+    name: '普通北漂',
+    emoji: '🧑‍💻',
+    weight: 84,
+    energy: 4,
+    wallet: 12000,
+    rent: 5000,
+    salary: 18000,
+    reveal:
+      '你睁开眼:合租次卧,月租五千,室友在客厅打游戏。存款一万二,月薪一万八。北京欢迎你——用它自己的方式。',
+  },
+  {
+    id: 'rich',
+    name: '钞能力',
+    emoji: '💰',
+    weight: 8,
+    energy: 3,
+    wallet: 999999,
+    rent: 0,
+    salary: 80000,
+    reveal:
+      '你睁开眼:三环内的房,房本上有你的名字,家里给的。在家族企业挂了个职,月薪八万。钱对你来说只是数字——但精力不是,应酬太多,你总觉得累。',
+  },
+  {
+    id: 'energetic',
+    name: '高精力宝宝',
+    emoji: '⚡',
+    weight: 8,
+    energy: 8,
+    wallet: 6000,
+    rent: 3500,
+    salary: 12000,
+    reveal:
+      '你睁开眼:青年公寓开间,月租三千五,存款六千,月薪一万二。穷,但你拥有这座城市最稀缺的资源——用不完的精力。别人下班瘫着,你还能再赴两个局。',
+  },
+]
+
+// ============ 经济常量 ============
+/** 每日吃喝通勤基础开销 */
+export const DAILY_FOOD = 80
+
+/** 约会行头(临时抬排面,仅当次约会生效) */
+export const OUTFITS: { name: string; cost: number; bonus: number; desc: string }[] = [
+  { name: '素颜赴约', cost: 0, bonus: 0, desc: '真实,省钱,听天由命' },
+  { name: '拾掇一下', cost: 300, bonus: 2, desc: '新衬衫+理发+打车,排面+2' },
+  { name: '全套战袍', cost: 1200, bonus: 4, desc: 'SKP级武装到手表,排面+4' },
+]
+
+/** 行动精力消耗 */
+export const ENERGY_COST = { chat: 1, date: 2, work: 2 }
+
+/** 排面基础值 */
+export const PAIMIAN_BASE = 2
+
+/** 并聊上限 = 精力换算 */
+export function parallelCap(maxEnergy: number): number {
+  return Math.max(1, Math.min(4, Math.round(maxEnergy / 2)))
+}
 
 export const MOODS: Record<MoodId, { name: string; emoji: string; hint: string; dcMod: number }> = {
   normal: { name: '正常', emoji: '💼', hint: '看起来一切如常', dcMod: 0 },
@@ -121,6 +257,8 @@ export interface CharacterProfile {
   deathTags: string[]
   decay: number
   mainSkill: SkillId
+  /** 擦边剧情概率系数 0-1(SFW,默认 0.1) */
+  spicy?: number
   intro: Script
   topics: Script[]
   hiddenTopics?: { codeId: string; script: Script }[]
@@ -143,6 +281,7 @@ export interface NpcState {
   topicIdx: number
   usedOpinions: string[]
   usedHidden: string[]
+  usedGeneric: string[]
   dates: number
   quirkTastes: Record<string, number>
   quirkBans: string[]
@@ -176,7 +315,19 @@ export interface GameState {
   version: Version
   seed: number
   day: number
-  slot: 0 | 1
+  /** 当日剩余精力(行动点) */
+  energy: number
+  maxEnergy: number
+  /** 玩家隐藏心情 0-100,不展示 */
+  mood: number
+  origin: OriginId
+  edu: EduId
+  /** 隐藏酒量 1-10,不展示 */
+  hiddenLiquor: number
+  /** 当次约会行头加成(排面 = PAIMIAN_BASE + outfit) */
+  outfit: number
+  rent: number
+  salary: number
   skills: Record<SkillId, number>
   wallet: number
   awkward: number
@@ -213,6 +364,3 @@ export interface RandomEventDef {
 }
 
 export const TOTAL_DAYS = 14
-export const SKILL_POINTS = 20
-export const SKILL_MIN = 1
-export const SKILL_MAX = 8

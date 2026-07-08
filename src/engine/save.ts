@@ -1,6 +1,6 @@
 import { GameState } from './types'
 
-const RUN_KEY = 'bjdating.run.v1'
+const RUN_KEY = 'bjdating.run.v2'
 const GALLERY_KEY = 'bjdating.gallery.v1'
 
 interface Gallery {

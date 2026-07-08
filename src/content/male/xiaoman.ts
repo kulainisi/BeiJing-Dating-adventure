@@ -13,6 +13,7 @@ export const xiaoman: CharacterProfile = {
   deathTags: ['zhi'],
   decay: 6,
   mainSkill: 'culture',
+  spicy: 0.12,
   confirmYes: '「……我这周写的所有东西里,都有你。本来想憋到你先说的。」她耳朵红了,踢了一下脚边的石子。',
   confirmNo: '「你很好。但我现在的状态,像一首没写完的歌……对不起,再给我点时间好吗?」',
   moodLines: {
@@ -130,9 +131,11 @@ export const xiaoman: CharacterProfile = {
     },
   ],
   dateSpots: [
-    { template: 'expo', location: '798·UCCA', price: 180, label: '798看展(她的主场)' },
+    { template: 'expo', location: '798·UCCA', price: 240, label: '798看展(她的主场)' },
     { template: 'citywalk', location: '鼓楼—后海', price: 60, label: '鼓楼Citywalk' },
-    { template: 'bar', location: 'Live House散场酒馆', price: 220, label: '散场后喝一杯' },
+    { template: 'bar', location: 'Live House散场酒馆', price: 400, label: '散场后喝一杯' },
+    { template: 'jubensha', location: '鼓楼推理社', price: 500, label: '剧本杀(文艺人设检验场)' },
+    { template: 'citywalk', location: '香山夜爬', price: 80, label: '夜爬香山看日出' },
   ],
   he: {
     title: '合拍',

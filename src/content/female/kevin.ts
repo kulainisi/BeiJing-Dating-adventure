@@ -13,6 +13,7 @@ export const kevin: CharacterProfile = {
   deathTags: [],
   decay: 12,
   mainSkill: 'mind',
+  spicy: 0.3,
   confirmYes: '「说真的,我带过三百个学员,说过很多漂亮话。」他挠了挠头,「但这句是新学的:我只想教你一个人了。」',
   confirmNo: '「宝……啊不是,我是说,咱们再处处看?最近课排得满,我怕委屈你。」',
   moodLines: {
@@ -153,9 +154,10 @@ export const kevin: CharacterProfile = {
     },
   ],
   dateSpots: [
-    { template: 'sport', location: '三里屯健身房', price: 200, label: '体验课(他的主场)' },
-    { template: 'bar', location: '三里屯', price: 380, label: '三里屯酒局' },
-    { template: 'citywalk', location: '亮马河', price: 50, label: '亮马河遛弯(高危目击区)' },
+    { template: 'sport', location: '三里屯健身房', price: 300, label: '体验课(他的主场)' },
+    { template: 'bar', location: '三里屯', price: 800, label: '三里屯酒局' },
+    { template: 'citywalk', location: '亮马河', price: 60, label: '亮马河遛弯(高危目击区)' },
+    { template: 'park', location: '欢乐谷', price: 800, label: '欢乐谷(教练的游乐场)' },
   ],
   he: {
     title: '独家课表',

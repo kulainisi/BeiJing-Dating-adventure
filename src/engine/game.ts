@@ -1,53 +1,101 @@
-import { chance, pick, seedRng, weighted } from './rng'
-import { dailyDecay, DecayNews, genQuirks, isAlive, rollMood, updateParallel } from './relations'
+import { chance, pick, rand, seedRng, weighted } from './rng'
+import { chargeWallet, dailyDecay, DecayNews, genQuirks, isAlive, rollMood, updateParallel } from './relations'
+import { bumpMood, moodDrift } from './mood'
 import {
   CharacterProfile,
   DateSpot,
+  DAILY_FOOD,
+  EDU_TIERS,
+  EduId,
+  ENERGY_COST,
   GameState,
   Line,
   NodeDef,
   NpcState,
   OpinionQ,
+  ORIGINS,
+  OUTFITS,
+  PAIMIAN_BASE,
+  parallelCap,
   Script,
-  SkillId,
   TOTAL_DAYS,
   Version,
 } from './types'
-import { getCharacters, getEvents, getGenericChats, getOpinions, getTemplate } from '@/content'
+import {
+  getCharacters,
+  getEvents,
+  getGenericChats,
+  getInterludes,
+  getOpinions,
+  getSpicyChats,
+  getTemplate,
+} from '@/content'
 import { getUnlockedCodes } from './save'
 
-// ============ 开局 ============
-export function newGame(version: Version, skills: Record<SkillId, number>, seed?: number): GameState {
+// ============ 开局:文化三档 + 投胎骰 ============
+export function newGame(version: Version, edu: EduId, seed?: number): GameState {
   const s0 = seed ?? (Date.now() % 2147483647)
   seedRng(s0)
+  const eduT = EDU_TIERS.find((e) => e.id === edu) ?? EDU_TIERS[1]
+  const origin = weighted(ORIGINS, (o) => o.weight)!
+
+  const wallet = Math.max(1000, origin.wallet + eduT.walletMod)
+  const salary = Math.round(origin.salary * eduT.salaryMul)
+  const hiddenLiquor = Math.min(10, 1 + Math.floor(rand() * 8) + eduT.liquorMod)
+
   const chars = getCharacters(version)
   const npcs: Record<string, NpcState> = {}
   for (const c of chars) {
     const q = genQuirks()
     npcs[c.id] = {
       id: c.id,
-      stage: 'chatting',
-      favor: 10 + skills.image * 2,
+      stage: 'locked',
+      favor: 12,
       mood: rollMood(),
       topicIdx: 0,
       usedOpinions: [],
       usedHidden: [],
+      usedGeneric: [],
       dates: 0,
       quirkTastes: q.tastes,
       quirkBans: q.bans,
       banHits: [],
       flags: [],
       lastDay: 1,
-      unread: true,
+      unread: false,
     }
   }
+  // 按并聊上限随机解锁开局对象
+  const cap = parallelCap(origin.energy)
+  const ids = Object.keys(npcs)
+  for (let i = 0; i < cap && ids.length > 0; i++) {
+    const id = ids.splice(Math.floor(rand() * ids.length), 1)[0]
+    npcs[id].stage = 'chatting'
+    npcs[id].unread = true
+  }
+
   return {
     version,
     seed: s0,
     day: 1,
-    slot: 0,
-    skills,
-    wallet: 600 + skills.money * 350,
+    energy: origin.energy,
+    maxEnergy: origin.energy,
+    mood: 60,
+    origin: origin.id,
+    edu,
+    hiddenLiquor,
+    outfit: 0,
+    rent: origin.rent,
+    salary,
+    skills: {
+      mouth: eduT.culture,
+      mind: eduT.culture,
+      culture: eduT.culture,
+      liquor: hiddenLiquor,
+      image: PAIMIAN_BASE,
+      money: origin.id === 'rich' ? 8 : 3,
+    },
+    wallet,
     awkward: 0,
     npcs,
     flags: getUnlockedCodes().map((c) => `code:${c}`),
@@ -69,24 +117,40 @@ export function newGame(version: Version, skills: Record<SkillId, number>, seed?
   }
 }
 
-// ============ 时段推进 ============
-export interface SlotAdvance {
-  newDay: boolean
-  decay: DecayNews[]
-  eventId?: string
+// ============ 精力 ============
+export function spendEnergy(s: GameState, n: number) {
+  s.energy = Math.max(0, s.energy - n)
 }
 
-export function advanceSlot(s: GameState): SlotAdvance {
+export function canAfford(s: GameState, action: keyof typeof ENERGY_COST): boolean {
+  return s.energy >= ENERGY_COST[action]
+}
+
+// ============ 睡觉 = 结束一天 ============
+export interface SleepResult {
+  cost: number
+  bankrupt: boolean
+  decay: DecayNews[]
+  eventId?: string
+  gameOver: boolean
+}
+
+export function sleep(s: GameState): SleepResult {
+  const eduT = EDU_TIERS.find((e) => e.id === s.edu)!
+  const cost = Math.round(s.rent / 30) + DAILY_FOOD
+  const bankrupt = chargeWallet(s, cost)
+
   updateParallel(s)
-  if (s.slot === 0) {
-    s.slot = 1
-    return { newDay: false, decay: [] }
-  }
-  // 进入新的一天
-  s.slot = 0
   s.day += 1
+  s.energy = s.maxEnergy
   s.luckyDay = false
-  s.awkward = Math.max(0, s.awkward - 10)
+  s.awkward = Math.max(0, s.awkward - 25 - eduT.sleepAwkBonus)
+  moodDrift(s)
+
+  if (bankrupt || s.day > TOTAL_DAYS) {
+    return { cost, bankrupt, decay: [], gameOver: s.day > TOTAL_DAYS }
+  }
+
   const decay = dailyDecay(s)
   for (const npc of Object.values(s.npcs)) {
     if (isAlive(npc)) {
@@ -96,7 +160,7 @@ export function advanceSlot(s: GameState): SlotAdvance {
   }
   // 抽随机事件
   let eventId: string | undefined
-  if (s.day <= TOTAL_DAYS && chance(0.6)) {
+  if (chance(0.6)) {
     const pool = getEvents(s.version).filter(
       (e) => e.eligible(s) && !(e.once && s.eventDone.includes(e.id)),
     )
@@ -107,22 +171,18 @@ export function advanceSlot(s: GameState): SlotAdvance {
       s.pendingEvent = ev.id
     }
   }
-  return { newDay: true, decay, eventId }
+  return { cost, bankrupt: false, decay, eventId, gameOver: false }
 }
 
-// ============ 行动:加班搞钱 / 躺平回血 ============
+// ============ 行动:加班搬钱 ============
 export function doWork(s: GameState): string {
-  const gain = 260 + s.skills.money * 60
+  const gain = Math.round((s.salary / 22) * 1.5)
   s.wallet += gain
+  spendEnergy(s, ENERGY_COST.work)
   for (const npc of Object.values(s.npcs)) {
     if (isAlive(npc) && npc.stage !== 'confirmed') npc.favor = Math.max(0, npc.favor - 2)
   }
-  return `加了一晚上班,到手 ¥${gain}。所有人的消息都被你已读不回。`
-}
-
-export function doRest(s: GameState): string {
-  s.awkward = Math.max(0, s.awkward - 45)
-  return '你点了外卖,躺在出租屋刷了一晚上短视频。社死值大幅回复,人生毫无进展。'
+  return `加了一晚上班,加班费到手 ¥${gain}。所有人的消息都被你已读不回。`
 }
 
 // ============ 聊天会话构建 ============
@@ -140,6 +200,7 @@ function withMoodOpener(sc: Script, profile: CharacterProfile, npc: NpcState): S
 
 export function buildChatSession(s: GameState, profile: CharacterProfile): Script {
   const npc = s.npcs[profile.id]
+  spendEnergy(s, ENERGY_COST.chat)
 
   // 1. 初次聊天
   if (!npc.flags.includes('intro_done')) {
@@ -155,7 +216,15 @@ export function buildChatSession(s: GameState, profile: CharacterProfile): Scrip
     }
   }
 
-  // 3. 专属话题与看法题交替
+  // 3. 擦边池(SFW):按角色 spicy 系数概率插入
+  const spicyPool = getSpicyChats().filter((c) => !npc.usedGeneric.includes(c.id))
+  if (spicyPool.length > 0 && npc.favor >= 40 && chance(profile.spicy ?? 0.1)) {
+    const sc = pick(spicyPool)
+    npc.usedGeneric.push(sc.id)
+    return withMoodOpener(cloneScript(sc), profile, npc)
+  }
+
+  // 4. 专属话题与看法题交替
   const wantTopic = npc.topicIdx <= npc.usedOpinions.length
   if (wantTopic && npc.topicIdx < profile.topics.length) {
     const sc = profile.topics[npc.topicIdx]
@@ -174,8 +243,11 @@ export function buildChatSession(s: GameState, profile: CharacterProfile): Scrip
     return withMoodOpener(cloneScript(sc), profile, npc)
   }
 
-  // 4. 话题池耗尽:日常闲聊
-  return withMoodOpener(cloneScript(pick(getGenericChats())), profile, npc)
+  // 5. 话题池耗尽:公用闲聊(避免重复)
+  const gPool = getGenericChats().filter((c) => !npc.usedGeneric.includes(c.id))
+  const g = gPool.length > 0 ? pick(gPool) : pick(getGenericChats())
+  npc.usedGeneric.push(g.id)
+  return withMoodOpener(cloneScript(g), profile, npc)
 }
 
 // ============ 看法题 → 聊天剧本 ============
@@ -251,9 +323,6 @@ export interface InviteResult {
 
 export function tryInvite(s: GameState, profile: CharacterProfile, spot: DateSpot): InviteResult {
   const npc = s.npcs[profile.id]
-  if (s.wallet < spot.price) {
-    return { accepted: false, line: `你看了眼余额(¥${s.wallet}),默默退出了对话框。这顿约不起。` }
-  }
   if (npc.mood === 'great') {
     return { accepted: true, line: '「好呀好呀!我正想出门!」秒回。' }
   }
@@ -272,14 +341,36 @@ export function tryInvite(s: GameState, profile: CharacterProfile, spot: DateSpo
   return { accepted: true, line: '「行啊,那到时候见。」' }
 }
 
-/** 构建约会剧本:场景模板 + 好感达标时在结尾注入「表白」支线 */
-export function buildDateSession(s: GameState, profile: CharacterProfile, spot: DateSpot): Script {
+/** 构建约会剧本:扣钱+行头结算+场景模板+表白注入。outfitIdx 对应 OUTFITS 下标 */
+export function buildDateSession(
+  s: GameState,
+  profile: CharacterProfile,
+  spot: DateSpot,
+  outfitIdx: number,
+): Script {
   const npc = s.npcs[profile.id]
+  const outfit = OUTFITS[outfitIdx] ?? OUTFITS[0]
   if (npc.stage === 'chatting') npc.stage = 'dating'
   npc.dates++
-  s.wallet -= spot.price
-  s.stats.spent += spot.price
+  spendEnergy(s, ENERGY_COST.date)
+  chargeWallet(s, spot.price + outfit.cost) // UI 侧已保证不会当场归零;真归零走 bankrupt
+
+  // 行头:临时排面 + 初见加成
+  s.outfit = outfit.bonus
+  s.skills.image = PAIMIAN_BASE + outfit.bonus
+  if (outfit.bonus > 0) npc.favor = Math.min(100, npc.favor + outfit.bonus)
+
   const sc = getTemplate(spot.template)(profile, npc, s, spot)
+
+  // 随机注入一条公用约会小插曲(约40%)
+  if (chance(0.4)) {
+    const il = cloneScript(pick(getInterludes()))
+    for (const nd of Object.values(il.nodes)) {
+      if (nd.next === '@start') nd.next = sc.start
+    }
+    Object.assign(sc.nodes, il.nodes)
+    sc.start = il.start
+  }
 
   const wrap = Object.values(sc.nodes).find((n) => n.end && n.id === 'wrap')
   if (wrap && npc.stage !== 'confirmed' && npc.favor >= 65 && npc.dates >= 2) {
@@ -291,6 +382,20 @@ export function buildDateSession(s: GameState, profile: CharacterProfile, spot: 
     Object.assign(sc.nodes, confirmNodes(profile))
   }
   return sc
+}
+
+/** 约会结束后复位行头 */
+export function resetOutfit(s: GameState) {
+  s.outfit = 0
+  s.skills.image = PAIMIAN_BASE
+}
+
+/** 婚姻骰:与已确立对象的极限状态下,约会结束暗掷 */
+export function marriageRoll(s: GameState, profile: CharacterProfile): boolean {
+  const npc = s.npcs[profile.id]
+  if (npc.stage !== 'confirmed') return false
+  if (npc.favor < 98 || npc.dates < 5 || !npc.flags.includes(profile.trueFlag)) return false
+  return chance(0.08)
 }
 
 /** 通用表白剧本(嵌入约会结尾),台词由角色档案提供 */
@@ -367,4 +472,13 @@ export function isGameOver(s: GameState): boolean {
 
 export function makeSysScript(id: string, lines: Line[]): Script {
   return { id, kind: 'event', nodes: { n: { id: 'n', lines, end: true } }, start: 'n' }
+}
+
+/** 首次喝酒后的隐藏酒量模糊评语 */
+export function liquorHint(s: GameState): string | null {
+  if (s.flags.includes('liquor_hinted')) return null
+  s.flags.push('liquor_hinted')
+  if (s.hiddenLiquor >= 7) return '几杯下肚,你意外地稳。看来你的肝是个深藏不露的狠角色。'
+  if (s.hiddenLiquor >= 4) return '你有点上头,但还撑得住。你的酒量大概就是「普通人」三个字。'
+  return '两杯下去你就开始看什么都重影。今晚,你的肝在写辞职信。'
 }

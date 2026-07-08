@@ -13,6 +13,7 @@ export const nana: CharacterProfile = {
   deathTags: ['zhi', 'trad'],
   decay: 10,
   mainSkill: 'liquor',
+  spicy: 0.3,
   confirmYes: '「行啊。」她晃了晃杯子,冰块叮当响,「不过我提前说,跟我在一起,你的肝要有心理准备。」',
   confirmNo: '「别啊,咱俩现在这样多好。一确定关系,酒都变得有责任了。」',
   moodLines: {
@@ -100,9 +101,10 @@ export const nana: CharacterProfile = {
     ]),
   ],
   dateSpots: [
-    { template: 'bar', location: '三里屯·她的主场', price: 400, label: '主场酒局(高危高收益)' },
-    { template: 'dinner', location: '簋街小龙虾', price: 280, label: '簋街宵夜局' },
-    { template: 'sport', location: '拳击体验课', price: 150, label: '拳击课(她教你)' },
+    { template: 'bar', location: '三里屯·她的主场', price: 800, label: '主场酒局(高危高收益)' },
+    { template: 'dinner', location: '簋街小龙虾', price: 350, label: '簋街宵夜局' },
+    { template: 'sport', location: '拳击体验课', price: 400, label: '拳击课(她教你)' },
+    { template: 'ktv', location: '工体旁通宵KTV', price: 450, label: '深夜K歌(她的第二主场)' },
   ],
   he: {
     title: '最后一杯',

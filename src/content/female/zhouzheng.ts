@@ -13,6 +13,7 @@ export const zhouzheng: CharacterProfile = {
   deathTags: ['flex'],
   decay: 3,
   mainSkill: 'mouth',
+  spicy: 0.03,
   confirmYes: '「我原本的规划是,第三次见面确定关系,第八个月订婚。」他顿了顿,「但跟你在一起之后,我头一次觉得——计划外的事,也挺好。」',
   confirmNo: '「你条件很好,但我妈那边……我需要按流程再汇报一下。你等我消息,一定等我消息。」',
   moodLines: {
@@ -105,9 +106,10 @@ export const zhouzheng: CharacterProfile = {
     ]),
   ],
   dateSpots: [
-    { template: 'dinner', location: '西单老字号涮肉', price: 240, label: '涮肉(他请客会开发票)' },
-    { template: 'citywalk', location: '玉渊潭公园', price: 30, label: '玉渊潭散步(高性价比)' },
-    { template: 'expo', location: '首都博物馆', price: 60, label: '首博看展(免费停车)' },
+    { template: 'dinner', location: '西单老字号涮肉', price: 300, label: '涮肉(他请客会开发票)' },
+    { template: 'citywalk', location: '玉渊潭公园', price: 60, label: '玉渊潭散步(高性价比)' },
+    { template: 'expo', location: '首都博物馆', price: 80, label: '首博看展(免费停车)' },
+    { template: 'sport', location: '朝阳公园飞盘局', price: 100, label: '飞盘局(单位工会组织)' },
   ],
   he: {
     title: '审批通过',

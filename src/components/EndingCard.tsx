@@ -31,6 +31,13 @@ export function EndingCard({ ending, state, npcName, detail, onRestart, onGaller
   const cardRef = useRef<HTMLDivElement>(null)
 
   const sqm = (state.stats.spent / 80000).toFixed(5)
+  // 副称号:根据本局行为追加
+  const stayedCount = Object.values(state.npcs).filter((n) => n.flags.includes('stayed')).length
+  const subBadges: string[] = []
+  if (state.stats.maxParallel >= 4) subBadges.push('🐟 鱼塘承包人')
+  if (stayedCount >= 2) subBadges.push('🍔 都市快餐评鉴家')
+  if (state.origin === 'rich') subBadges.push('💰 钞能力持有者')
+  if (state.origin === 'energetic') subBadges.push('⚡ 高精力宝宝')
 
   async function drawCanvas(): Promise<HTMLCanvasElement> {
     const c = document.createElement('canvas')
@@ -142,7 +149,14 @@ export function EndingCard({ ending, state, npcName, detail, onRestart, onGaller
             {stars(ending.stars)}
           </div>
         </div>
-        <div className="ending-badge">🏅 获得称号:{ending.badge}</div>
+        <div className="ending-badge">
+          🏅 获得称号:{ending.badge}
+          {subBadges.length > 0 && (
+            <div style={{ fontSize: 12, marginTop: 4, color: 'var(--text-dim)', fontWeight: 600 }}>
+              副称号:{subBadges.join(' · ')}
+            </div>
+          )}
+        </div>
         <div className="ending-comment">
           {npcName && <div style={{ marginBottom: 8, color: '#e8ecf3' }}>对象:{npcName}</div>}
           {detail && <div style={{ marginBottom: 8, color: '#e8ecf3' }}>{detail}</div>}

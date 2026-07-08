@@ -3,7 +3,16 @@
  * 校验所有剧本的节点连通性、goto 指向、结局 id、暗号映射——
  * 持续更新剧情时的回归保障。
  */
-import { getCharacters, getEvents, getGenericChats, getOpinions, findEnding, CODES } from '../src/content'
+import {
+  getCharacters,
+  getEvents,
+  getGenericChats,
+  getInterludes,
+  getOpinions,
+  getSpicyChats,
+  findEnding,
+  CODES,
+} from '../src/content'
 import { buildDateSession, buildOpinionScript, newGame } from '../src/engine/game'
 import { Script, Version } from '../src/engine/types'
 
@@ -92,21 +101,27 @@ for (const version of ['male', 'female'] as Version[]) {
       validateScript(buildOpinionScript(q, c), `${c.name}/opinion:${q.id}`, usedEndings)
     }
 
-    // 约会模板 × 地点(好感拉满以触发表白注入,校验 cf_ 节点)
+    // 约会模板 × 地点(好感拉满以触发表白注入,校验 cf_ 节点;多跑几个 seed 覆盖插曲/暧昧支线)
     for (let i = 0; i < c.dateSpots.length; i++) {
-      const s = newGame(version, { mouth: 4, mind: 4, liquor: 3, culture: 3, image: 3, money: 3 }, 42)
-      s.npcs[c.id].favor = 90
-      s.npcs[c.id].dates = 1
-      const sc = buildDateSession(s, c, c.dateSpots[i])
-      validateScript(sc, `${c.name}/date:${c.dateSpots[i].template}`, usedEndings)
+      for (const seed of [42, 7, 2026]) {
+        const s = newGame(version, 'putong', seed)
+        s.wallet = 99999
+        s.npcs[c.id].favor = 90
+        s.npcs[c.id].dates = 1
+        const sc = buildDateSession(s, c, c.dateSpots[i], 0)
+        validateScript(sc, `${c.name}/date:${c.dateSpots[i].template}#${seed}`, usedEndings)
+      }
     }
   }
 
   // 随机事件
-  const s = newGame(version, { mouth: 4, mind: 4, liquor: 3, culture: 3, image: 3, money: 3 }, 7)
+  const s = newGame(version, 'putong', 7)
   s.day = 7
   s.stats.mines = 3
-  for (const id of Object.keys(s.npcs)) s.npcs[id].favor = 55
+  for (const id of Object.keys(s.npcs)) {
+    s.npcs[id].stage = 'chatting'
+    s.npcs[id].favor = 55
+  }
   for (const e of getEvents(version)) {
     if (!e.eligible(s)) {
       console.log(`  ⚠️ 事件 ${e.id} 在标准测试态下不可触发(可能条件苛刻,请人工确认)`)
@@ -117,20 +132,39 @@ for (const version of ['male', 'female'] as Version[]) {
   }
 }
 
-// 日常闲聊
+// 日常闲聊 + 擦边池
 for (const g of getGenericChats()) validateScript(g, `generic:${g.id}`, usedEndings)
+for (const g of getSpicyChats()) validateScript(g, `spicy:${g.id}`, usedEndings)
+
+// 约会小插曲('@start' 占位符替换为一个终点节点后校验)
+for (const il of getInterludes()) {
+  const patched: Script = JSON.parse(JSON.stringify(il))
+  patched.nodes.__end = { id: '__end', lines: [{ who: 'nar', text: 'x' }], end: true }
+  for (const n of Object.values(patched.nodes)) {
+    if (n.next === '@start') n.next = '__end'
+  }
+  validateScript(patched, `interlude:${il.id}`, usedEndings)
+}
 
 // endGame 引用的结局必须存在
 console.log('\n== 校验结局引用 ==')
-usedEndings.add('all_blocked')
-usedEndings.add('bankrupt')
-usedEndings.add('awkward_full')
-usedEndings.add('give_up_feast')
-usedEndings.add('fate_win')
-usedEndings.add('time_manager')
-usedEndings.add('goodcard')
-usedEndings.add('ambiguous')
-usedEndings.add('readnoreply')
+for (const id of [
+  'all_blocked',
+  'bankrupt',
+  'awkward_full',
+  'give_up_feast',
+  'fate_win',
+  'time_manager',
+  'goodcard',
+  'ambiguous',
+  'readnoreply',
+  'marriage',
+  'seaking',
+  'euphoria',
+  'emo_quit',
+]) {
+  usedEndings.add(id)
+}
 for (const id of usedEndings) {
   if (!findEnding(id)) fail(`结局 "${id}" 被引用但未在 endings.ts 中定义`)
 }

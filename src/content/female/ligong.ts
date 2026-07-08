@@ -13,6 +13,7 @@ export const ligong: CharacterProfile = {
   deathTags: ['zhi'],
   decay: 4,
   mainSkill: 'mind',
+  spicy: 0.05,
   confirmYes: '「我评估过了,这段关系的单元测试全部通过。」他推了推眼镜,耳根通红,「……说人话就是,我可能很早就喜欢你了。」',
   confirmNo: '「这个需求……我需要再排期评估一下。抱歉,不是你的问题,是我这边资源没到位。」',
   moodLines: {
@@ -111,9 +112,10 @@ export const ligong: CharacterProfile = {
     ]),
   ],
   dateSpots: [
-    { template: 'sport', location: '奥森公园', price: 40, label: '奥森跑步(他的碳水补给日)' },
-    { template: 'dinner', location: '海底捞', price: 230, label: '海底捞(服务使他安心)' },
-    { template: 'citywalk', location: '亮马河', price: 50, label: '亮马河遛弯' },
+    { template: 'sport', location: '奥森公园', price: 60, label: '奥森跑步(他的碳水补给日)' },
+    { template: 'dinner', location: '海底捞', price: 400, label: '海底捞(服务使他安心)' },
+    { template: 'citywalk', location: '亮马河', price: 60, label: '亮马河遛弯' },
+    { template: 'jubensha', location: '中关村推理馆', price: 500, label: '剧本杀(逻辑怪的主场)' },
   ],
   he: {
     title: '需求上线',

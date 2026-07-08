@@ -133,7 +133,7 @@ const EVENTS: RandomEventDef[] = [
     id: 'ex_back',
     once: true,
     eligible: (s) => s.day >= 3,
-    weight: () => 10,
+    weight: () => 5,
     build: (s) => {
       return eventScript('ev_ex', '前任复活', 'bar', [
         node('a', [
@@ -161,20 +161,21 @@ const EVENTS: RandomEventDef[] = [
   {
     id: 'overtime',
     eligible: (s) => s.day >= 2,
-    weight: () => 9,
+    weight: () => 4,
     build: (s) => {
       for (const n of aliveNpcs(s)) {
         if (n.stage !== 'confirmed') n.favor = Math.max(0, n.favor - 3)
       }
+      s.energy = 0 // 被迫休息:这一天被工作吃掉了
       return eventScript('ev_ot', '突袭加班', 'sport', [
         node('a', [
-          nar('早上九点,工作群@全体成员:「今天上午临时对齐一下,大家都进会议室。」'),
-          nar('你今天的所有暧昧计划,被一个「对齐」干碎了。所有人的消息都晚回了几个小时,好感度集体阴跌。'),
-          sys('全体在聊对象好感 -3'),
+          nar('早上九点,工作群@全体成员:「今天临时对齐一下,大家都进会议室。」'),
+          nar('这场「对齐」从上午开到天黑。你今天的所有暧昧计划被干碎,精力被榨干,消息全部晚回。'),
+          sys('全体在聊对象好感 -3;今日精力清零(被迫休息)'),
         ], {
           choices: [
             { text: '会议间隙疯狂摸鱼回消息,手速拉满', effects: { awkward: 5 }, goto: 'b1' },
-            { text: '安心开会,搞钱要紧,晚上统一回复', effects: { wallet: 150 }, goto: 'b2' },
+            { text: '安心开会,搞钱要紧,晚上统一回复', effects: { wallet: 800 }, goto: 'b2' },
           ],
         }),
         node('b1', [nar('你在摄像头死角完成了五线操作,险些把「收到」发给约会对象,把「想你」发给领导。')], { end: true }),
@@ -226,7 +227,7 @@ const EVENTS: RandomEventDef[] = [
   {
     id: 'lucky',
     eligible: () => true,
-    weight: () => 8,
+    weight: () => 4,
     build: (s) => {
       s.luckyDay = true
       return eventScript('ev_lucky', '雍和宫锦鲤日', 'expo', [
@@ -270,7 +271,7 @@ const EVENTS: RandomEventDef[] = [
     id: 'mini_viral',
     once: true,
     eligible: (s) => s.day >= 4,
-    weight: () => 7,
+    weight: () => 4,
     build: (s) => {
       for (const n of aliveNpcs(s)) n.favor = Math.min(100, n.favor + 3)
       return eventScript('ev_viral', '意外小火', 'expo', [
@@ -285,14 +286,14 @@ const EVENTS: RandomEventDef[] = [
   // 💸 账单刺客
   {
     id: 'bill_assassin',
-    eligible: (s) => s.wallet > 300,
-    weight: () => 8,
+    eligible: (s) => s.wallet > 2000,
+    weight: () => 3,
     build: (s) => {
       return eventScript('ev_bill', '账单刺客', 'shop', [
         node('a', [
-          nar('月中,三件事同时找上门:房租自动扣款、视频网站年费续订、上个月冲动购买的健身卡分期。'),
-          sys('钱包 -280。北京生活的背景音,是扣款短信的提示声。'),
-        ], { effects: { wallet: -280 }, end: true }),
+          nar('月中,三件事同时找上门:视频网站年费续订、上月冲动购买的健身卡分期、还有一笔你已经想不起来的自动续费。'),
+          sys('钱包 -580。北京生活的背景音,是扣款短信的提示声。'),
+        ], { effects: { wallet: -580 }, end: true }),
       ])
     },
   },
@@ -300,7 +301,7 @@ const EVENTS: RandomEventDef[] = [
   {
     id: 'mom_call',
     eligible: (s) => s.day >= 3,
-    weight: () => 9,
+    weight: () => 4,
     build: (s) => {
       return eventScript('ev_mom', '妈妈来电', 'dinner', [
         node('a', [
@@ -383,7 +384,7 @@ const EVENTS: RandomEventDef[] = [
   {
     id: 'sandstorm',
     eligible: () => true,
-    weight: () => 6,
+    weight: () => 3,
     build: (s) => {
       return eventScript('ev_sand', '沙尘暴预警', 'sport', [
         node('a', [

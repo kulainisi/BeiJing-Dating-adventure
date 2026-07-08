@@ -13,6 +13,7 @@ export const yutong: CharacterProfile = {
   deathTags: ['zhi'],
   decay: 5,
   mainSkill: 'mind',
+  spicy: 0.03,
   confirmYes: '「我爸妈问了你八回了,我一直说『再看看』……其实我早就看好了。」她说完自己先脸红了。',
   confirmNo: '「你人很好,真的。但我现在分不清是我喜欢你,还是我爸妈喜欢你……再等等好吗?」',
   moodLines: {
@@ -116,9 +117,10 @@ export const yutong: CharacterProfile = {
     ]),
   ],
   dateSpots: [
-    { template: 'dinner', location: '西单老字号涮肉', price: 260, label: '涮肉局(接地气考察)' },
-    { template: 'citywalk', location: '中山公园', price: 30, label: '中山公园散步(相亲角圣地)' },
-    { template: 'expo', location: '国家博物馆', price: 80, label: '国博看展(正经约会)' },
+    { template: 'dinner', location: '西单老字号涮肉', price: 300, label: '涮肉局(接地气考察)' },
+    { template: 'citywalk', location: '中山公园', price: 60, label: '中山公园散步(相亲角圣地)' },
+    { template: 'expo', location: '国家博物馆', price: 120, label: '国博看展(正经约会)' },
+    { template: 'ktv', location: '单位团建常去的KTV', price: 300, label: 'K歌(她点了首摇滚)' },
   ],
   he: {
     title: '双方家长已阅',

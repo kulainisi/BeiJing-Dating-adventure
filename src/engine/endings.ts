@@ -1,3 +1,4 @@
+import { chance } from './rng'
 import { confirmedList, isAlive } from './relations'
 import { EndingResult, GameState } from './types'
 import { getCharacters } from '@/content'
@@ -13,14 +14,26 @@ export function settle(s: GameState): EndingResult {
   if (confirmed.length === 1) {
     const npc = confirmed[0]
     const profile = chars.find((c) => c.id === npc.id)!
+    // 极限状态的结算日补掷婚姻骰(20%)
+    if (npc.favor >= 98 && npc.dates >= 5 && npc.flags.includes(profile.trueFlag) && chance(0.2)) {
+      return { id: 'marriage', npcId: npc.id }
+    }
     if (npc.flags.includes(profile.trueFlag)) {
-      return { id: `true_${npc.id}`, npcId: npc.id }
+      // 快餐化惩罚:留过宿的关系,真结局门槛提高(Coco 除外,她的真结局钥匙就是这个)
+      const stayed = npc.flags.includes('stayed')
+      if (!stayed || npc.favor >= 95 || profile.id === 'coco') {
+        return { id: `true_${npc.id}`, npcId: npc.id }
+      }
     }
     return { id: `he_${npc.id}`, npcId: npc.id }
   }
 
   const all = Object.values(s.npcs)
   const alive = all.filter(isAlive)
+  // 海王/海后:三人以上高好感,无人确立
+  if (alive.filter((n) => n.favor >= 70).length >= 3) {
+    return { id: 'seaking' }
+  }
   if (alive.length === 0) {
     return { id: 'all_blocked' }
   }
@@ -34,7 +47,7 @@ export function settle(s: GameState): EndingResult {
   return { id: 'readnoreply' }
 }
 
-/** 中途全员出局检查 */
+/** 中途全员出局检查(locked 不算活着,也不算出局——池子抽干且全灭才算) */
 export function checkAllBlocked(s: GameState): boolean {
-  return Object.values(s.npcs).every((n) => !isAlive(n))
+  return Object.values(s.npcs).every((n) => !isAlive(n) && n.stage !== 'locked')
 }

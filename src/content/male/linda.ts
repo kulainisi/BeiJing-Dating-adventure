@@ -13,6 +13,7 @@ export const linda: CharacterProfile = {
   deathTags: ['frugal'],
   decay: 8,
   mainSkill: 'money',
+  spicy: 0.1,
   confirmYes: '「你的proposal……我approve了。不过丑话说前面,我脾气不好,加班很多,你要想清楚。」说完她自己先笑了。',
   confirmNo: '「你是个好人,但我现在的bandwidth真的不够……sorry,我们再看看好吗?」',
   moodLines: {
@@ -135,9 +136,11 @@ export const linda: CharacterProfile = {
     },
   ],
   dateSpots: [
-    { template: 'shopping', location: 'SKP', price: 350, label: 'SKP逛街(危险与机遇并存)' },
-    { template: 'bar', location: '三里屯某隐秘酒吧', price: 380, label: '三里屯小酌' },
-    { template: 'dinner', location: '国贸新荣记', price: 520, label: '国贸吃顿好的' },
+    { template: 'shopping', location: 'SKP', price: 1000, label: 'SKP逛街(危险与机遇并存)' },
+    { template: 'bar', location: '三里屯某隐秘酒吧', price: 800, label: '三里屯小酌' },
+    { template: 'dinner', location: '国贸新荣记', price: 2400, label: '新荣记(不看价格的那种)' },
+    { template: 'ktv', location: '国贸K歌之王', price: 500, label: 'K歌(她的减压方式)' },
+    { template: 'expo', location: '国贸顶层观景台', price: 360, label: '云端看展(俯瞰她的战场)' },
   ],
   he: {
     title: '并购成功',

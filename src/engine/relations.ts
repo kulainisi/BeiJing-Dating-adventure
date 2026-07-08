@@ -1,4 +1,5 @@
 import { chance, pick, pickN, rand, weighted } from './rng'
+import { bumpMood } from './mood'
 import { CharacterProfile, Effects, GameState, MoodId, NpcState } from './types'
 
 // ============ 口味怪癖(每局随机) ============
@@ -74,12 +75,34 @@ export interface EffectFeedback {
   blocked?: string
   ended?: string
   confirmed?: boolean
+  /** 名额释放后随机补位进来的新角色 id */
+  newMatch?: string
 }
 
 const aliveStages = ['chatting', 'dating', 'confirmed']
 
 export function isAlive(n: NpcState) {
   return aliveStages.includes(n.stage)
+}
+
+/** 钱包统一扣款口:任何时刻钱归零就寄 */
+export function chargeWallet(s: GameState, amount: number): boolean {
+  s.wallet -= amount
+  if (amount > 0) s.stats.spent += amount
+  return s.wallet <= 0
+}
+
+/** 名额释放后从锁定池随机抽一位新人解锁 */
+export function refillPool(s: GameState): string | null {
+  const locked = Object.values(s.npcs).filter((n) => n.stage === 'locked')
+  if (locked.length === 0) return null
+  const next = pick(locked)
+  next.stage = 'chatting'
+  next.favor = 12
+  next.unread = true
+  next.lastDay = s.day
+  next.mood = rollMood()
+  return next.id
 }
 
 /** 结算一个选择/节点的效果。返回给 UI 的反馈信息。 */
@@ -126,66 +149,80 @@ export function applyEffects(
   if (npc) {
     npc.favor = Math.max(0, Math.min(100, npc.favor + favor))
     fb.favorDelta = favor
+    if (favor >= 8) bumpMood(s, 5)
     if (fx.npcFlags) for (const f of fx.npcFlags) if (!npc.flags.includes(f)) npc.flags.push(f)
   }
 
-  if (fx.mine) s.stats.mines++
+  if (fx.mine) {
+    s.stats.mines++
+    bumpMood(s, -4)
+  }
   if (fx.blackout) s.stats.blackouts++
   if (fx.opinion) {
     const log = s.opinionLog[fx.opinion.id] ?? []
     s.opinionLog[fx.opinion.id] = [...log, ...fx.opinion.tags]
   }
   if (fx.wallet) {
-    s.wallet += fx.wallet
-    if (fx.wallet < 0) s.stats.spent += -fx.wallet
+    if (fx.wallet < 0) {
+      if (chargeWallet(s, -fx.wallet) && !fb.ended) fb.ended = 'bankrupt'
+    } else {
+      s.wallet += fx.wallet
+    }
   }
   if (fx.awkward) s.awkward = Math.max(0, s.awkward + fx.awkward)
   if (fx.drink) s.stats.drinks += fx.drink
   if (fx.flags) for (const f of fx.flags) if (!s.flags.includes(f)) s.flags.push(f)
 
   if (npc && fx.block && !fb.blocked) {
-    blockNpc(s, npc, profile, fx.block)
+    fb.newMatch = blockNpc(s, npc, profile, fx.block) ?? undefined
     fb.blocked = fx.block
   }
 
   if (fx.blockNpcIds) {
     for (const b of fx.blockNpcIds) {
       const other = s.npcs[b.id]
-      if (other && isAlive(other)) blockNpc(s, other, null, b.reason)
+      if (other && isAlive(other)) {
+        const nm = blockNpc(s, other, null, b.reason)
+        if (nm && !fb.newMatch) fb.newMatch = nm
+      }
     }
   }
 
   if (npc && fx.confirm) {
     npc.stage = 'confirmed'
     fb.confirmed = true
+    bumpMood(s, 15)
   }
 
   if (fx.endGame) fb.ended = fx.endGame
 
   // 全局社死过载
   if (s.awkward >= 100 && !fb.ended) fb.ended = 'awkward_full'
-  // 破产
-  if (s.wallet < 0 && !fb.ended) fb.ended = 'bankrupt'
+  // 钱归零就寄
+  if (s.wallet <= 0 && !fb.ended) fb.ended = 'bankrupt'
 
   return fb
 }
 
+/** 拉黑一名角色;若因此释放名额,返回补位新人的 id */
 export function blockNpc(
   s: GameState,
   npc: NpcState,
   profile: CharacterProfile | null,
   reason: string,
-) {
-  if (npc.stage === 'blocked') return
+): string | null {
+  if (npc.stage === 'blocked') return null
   npc.stage = 'blocked'
   npc.blockReason = reason
   s.stats.blocks++
+  bumpMood(s, -12)
+  return refillPool(s)
 }
 
 // ============ 冷落衰减(每日结算) ============
 export interface DecayNews {
   npcId: string
-  kind: 'decay' | 'faded'
+  kind: 'decay' | 'faded' | 'match'
 }
 
 export function dailyDecay(s: GameState): DecayNews[] {
@@ -199,8 +236,11 @@ export function dailyDecay(s: GameState): DecayNews[] {
       if (npc.favor <= 0) {
         npc.favor = 0
         npc.stage = 'faded'
-        npc.blockReason = '被你晾了太久,TA安静地删掉了你'
+        npc.blockReason = '被你晾了太久。TA说卷不动了,收拾行李离开了北京'
+        bumpMood(s, -8)
         news.push({ npcId: npc.id, kind: 'faded' })
+        const nm = refillPool(s)
+        if (nm) news.push({ npcId: nm, kind: 'match' })
       }
     }
   }
@@ -218,6 +258,7 @@ export function fateRoll(s: GameState, npc: NpcState): FateResult {
     s.stats.fateHits++
     npc.stage = 'ghosted'
     npc.blockReason = '北京的风把TA吹走了'
+    bumpMood(s, -10)
     return 'ghost'
   }
   if (r < 0.025 && npc.favor >= 20) {

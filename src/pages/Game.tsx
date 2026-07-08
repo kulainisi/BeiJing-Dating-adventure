@@ -2,33 +2,37 @@ import { useEffect, useReducer, useRef, useState } from 'react'
 import {
   CharacterProfile,
   ChoiceDef,
+  ENERGY_COST,
   GameState,
   Line,
   MOODS,
   NodeDef,
   NpcState,
+  ORIGINS,
+  OUTFITS,
   Script,
-  SKILLS,
+  SKILL_DISPLAY,
   TOTAL_DAYS,
 } from '@/engine/types'
 import {
-  advanceSlot,
   buildChatSession,
   buildDateSession,
-  doRest,
   doWork,
-  isGameOver,
+  liquorHint,
+  marriageRoll,
+  resetOutfit,
+  sleep,
   touchNpc,
   tryInvite,
 } from '@/engine/game'
-import { applyEffects, fateRoll, isAlive } from '@/engine/relations'
+import { applyEffects, fateRoll, isAlive, refillPool } from '@/engine/relations'
+import { bumpMood, moodExtremeRoll, moodHint } from '@/engine/mood'
 import { checkAllBlocked, settle } from '@/engine/endings'
-import { CheckResult, performCheck } from '@/engine/checks'
+import { performCheck } from '@/engine/checks'
 import { pick, seedRng } from '@/engine/rng'
 import { addDeath, addRun, clearRun, saveRun, unlockEnding } from '@/engine/save'
 import { findEnding, findEvent, getCharacter, getCharacters, resolveDanmaku } from '@/content'
 import { DanmakuLayer, DanmakuItem } from '@/components/Danmaku'
-import { DiceRoll } from '@/components/DiceRoll'
 import { EndingCard } from '@/components/EndingCard'
 
 interface Session {
@@ -41,6 +45,7 @@ type Phase =
   | { t: 'hub' }
   | { t: 'list'; mode: 'chat' | 'date' }
   | { t: 'spot'; npcId: string }
+  | { t: 'outfit'; npcId: string; spotIdx: number }
   | { t: 'session'; sess: Session }
   | { t: 'ending'; id: string; npcId?: string; detail?: string }
 
@@ -112,22 +117,32 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
     setPhase({ t: 'ending', id, npcId, detail })
   }
 
-  function advance() {
-    const adv = advanceSlot(s)
-    const faded = adv.decay.filter((d) => d.kind === 'faded')
+  function announceMatch(npcId: string | null | undefined, delay = 1600) {
+    if (!npcId) return
+    const name = getCharacter(s.version, npcId).name
+    window.setTimeout(() => showToast(`💘 「心动Beijing」为你推了一位新朋友:${name}`), delay)
+  }
+
+  /** 睡觉 = 结束一天:扣固定开销、回精力、每日结算、抽事件 */
+  function doSleep() {
+    const r = sleep(s)
+    if (r.bankrupt) return endGame('bankrupt')
+    if (r.gameOver) {
+      const res = settle(s)
+      return endGame(res.id, res.npcId, res.detail)
+    }
+    const faded = r.decay.filter((d) => d.kind === 'faded')
     for (const f of faded) {
       const reason = s.npcs[f.npcId].blockReason
       if (reason) addDeath(reason)
     }
-    if (faded.length > 0) showToast('🕊️ 有人因为被你晾太久,悄悄删掉了你。')
-
+    if (faded.length > 0) showToast('🕊️ 有人被你晾太久,收拾行李离开了北京。')
+    announceMatch(r.decay.find((d) => d.kind === 'match')?.npcId, faded.length > 0 ? 2400 : 400)
     if (checkAllBlocked(s)) return endGame('all_blocked')
-    if (isGameOver(s)) {
-      const r = settle(s)
-      return endGame(r.id, r.npcId, r.detail)
-    }
-    if (adv.eventId) {
-      const ev = findEvent(adv.eventId)
+    if (faded.length === 0) showToast(`😴 新的一天。房租和生活费扣了 ¥${r.cost}。`)
+
+    if (r.eventId) {
+      const ev = findEvent(r.eventId)
       s.pendingEvent = undefined
       const sc = ev?.build(s)
       if (sc) {
@@ -142,29 +157,62 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
     force()
   }
 
+  /** 回到行动中心;精力耗尽则自动入夜 */
+  function backToHub() {
+    if (checkAllBlocked(s)) return endGame('all_blocked')
+    if (s.wallet <= 0) return endGame('bankrupt')
+    if (s.energy <= 0) {
+      showToast('⚡ 精力耗尽,今天到此为止。')
+      doSleep()
+      return
+    }
+    saveRun(s)
+    setPhase({ t: 'hub' })
+    force()
+  }
+
   function finishSession(sess: Session) {
     let ended = pendingEnding.current
     pendingEnding.current = null
 
+    if (sess.type === 'date') resetOutfit(s)
+
     if (sess.npcId && sess.type !== 'event') {
       touchNpc(s, sess.npcId)
       const npcSt = s.npcs[sess.npcId]
+      const profile = getCharacter(s.version, sess.npcId)
+
+      // 婚姻骰:极限关系的约会结束后暗掷
+      if (!ended && sess.type === 'date' && marriageRoll(s, profile)) {
+        ended = { id: 'marriage', npcId: sess.npcId }
+      }
       if (!ended && isAlive(npcSt) && npcSt.stage !== 'confirmed') {
         const fate = fateRoll(s, npcSt)
         if (fate === 'win') {
           ended = { id: 'fate_win', npcId: sess.npcId }
         } else if (fate === 'ghost') {
           addDeath(npcSt.blockReason!)
-          const name = getCharacter(s.version, sess.npcId).name
-          showToast(`💨 ${name}的头像忽然灰了。没有争吵,没有理由。北京的风把TA吹走了。`)
+          showToast(`💨 ${profile.name}的头像忽然灰了。没有争吵,没有理由。北京的风把TA吹走了。`)
           fireDanmaku(['#fate'])
+          announceMatch(refillPool(s), 2600)
         }
       }
+      // 酒局后的隐藏酒量模糊评语(只提示一次)
+      if (sess.type === 'date' && sess.script.bg === 'bar' && s.stats.drinks > 0) {
+        const h = liquorHint(s)
+        if (h && !ended) window.setTimeout(() => showToast(`🍺 ${h}`), 1200)
+      }
+      if (sess.type === 'date' && !ended) bumpMood(s, 6)
+    }
+
+    // 玩家心情极端时的暗骰
+    if (!ended) {
+      const m = moodExtremeRoll(s)
+      if (m) ended = { id: m }
     }
 
     if (ended) return endGame(ended.id, ended.npcId, ended.detail)
-    if (checkAllBlocked(s)) return endGame('all_blocked')
-    advance()
+    backToHub()
   }
 
   function startChat(profile: CharacterProfile) {
@@ -172,7 +220,7 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
     setPhase({ t: 'session', sess: { script: sc, npcId: profile.id, type: 'chat' } })
   }
 
-  function startDate(profile: CharacterProfile, spotIdx: number) {
+  function startDate(profile: CharacterProfile, spotIdx: number, outfitIdx: number) {
     const spot = profile.dateSpots[spotIdx]
     const inv = tryInvite(s, profile, spot)
     if (!inv.accepted) {
@@ -182,7 +230,8 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
       return
     }
     showToast(inv.line)
-    const sc = buildDateSession(s, profile, spot)
+    const sc = buildDateSession(s, profile, spot, outfitIdx)
+    if (s.wallet <= 0) return endGame('bankrupt')
     saveRun(s)
     setPhase({ t: 'session', sess: { script: sc, npcId: profile.id, type: 'date' } })
     force()
@@ -196,7 +245,9 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
       {phase.t !== 'ending' && (
         <div className="hud">
           <span className="day">第{Math.min(s.day, TOTAL_DAYS)}天</span>
-          <span className="slot-tag">{s.slot === 0 ? '🌤 白天' : '🌙 晚上'}</span>
+          <span className="slot-tag">
+            ⚡{s.energy}/{s.maxEnergy}
+          </span>
           <span className="slot-tag">{s.version === 'male' ? '男版' : '女版'}</span>
           <span className="spacer" />
           <span className="awk">
@@ -224,12 +275,9 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
           onDate={() => setPhase({ t: 'list', mode: 'date' })}
           onWork={() => {
             showToast(doWork(s))
-            advance()
+            backToHub()
           }}
-          onRest={() => {
-            showToast(doRest(s))
-            advance()
-          }}
+          onSleep={doSleep}
           onFeast={() => {
             if (!armFeast) {
               setArmFeast(true)
@@ -261,13 +309,23 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
           s={s}
           profile={getCharacter(s.version, phase.npcId)}
           onBack={() => setPhase({ t: 'list', mode: 'date' })}
-          onPick={(idx) => startDate(getCharacter(s.version, phase.npcId), idx)}
+          onPick={(idx) => setPhase({ t: 'outfit', npcId: phase.npcId, spotIdx: idx })}
+        />
+      )}
+
+      {phase.t === 'outfit' && (
+        <OutfitPick
+          s={s}
+          profile={getCharacter(s.version, phase.npcId)}
+          spotIdx={phase.spotIdx}
+          onBack={() => setPhase({ t: 'spot', npcId: phase.npcId })}
+          onPick={(outfitIdx) => startDate(getCharacter(s.version, phase.npcId), phase.spotIdx, outfitIdx)}
         />
       )}
 
       {phase.t === 'session' && (
         <SessionView
-          key={phase.sess.script.id + s.day + s.slot}
+          key={phase.sess.script.id + s.day + s.energy}
           s={s}
           sess={phase.sess}
           onFavor={showFavor}
@@ -296,7 +354,7 @@ function Hub({
   onChat,
   onDate,
   onWork,
-  onRest,
+  onSleep,
   onFeast,
   onExit,
 }: {
@@ -306,17 +364,19 @@ function Hub({
   onChat: () => void
   onDate: () => void
   onWork: () => void
-  onRest: () => void
+  onSleep: () => void
   onFeast: () => void
   onExit: () => void
 }) {
   const alive = chars.filter((c) => isAlive(s.npcs[c.id]))
   const unread = chars.filter((c) => isAlive(s.npcs[c.id]) && s.npcs[c.id].unread).length
-  const actions: { emoji: string; title: string; desc: string; onClick: () => void }[] = [
-    { emoji: '💬', title: '回消息', desc: '推进一个人的聊天', onClick: onChat },
-    { emoji: '📍', title: '约会', desc: '花钱,涨好感,有戏剧', onClick: onDate },
-    { emoji: '🧑‍💻', title: '加班搞钱', desc: '+钱,全员好感小跌', onClick: onWork },
-    { emoji: '🛋️', title: '躺平回血', desc: '大幅清空社死值', onClick: onRest },
+  const origin = ORIGINS.find((o) => o.id === s.origin)!
+  const hint = moodHint(s)
+  const actions: { emoji: string; title: string; desc: string; cost: number; onClick: () => void }[] = [
+    { emoji: '💬', title: '回消息', desc: '推进一个人的聊天', cost: ENERGY_COST.chat, onClick: onChat },
+    { emoji: '📍', title: '约会', desc: '花钱,涨好感,有戏剧', cost: ENERGY_COST.date, onClick: onDate },
+    { emoji: '🧑‍💻', title: '加班搬钱', desc: '加班费到手,全员好感小跌', cost: ENERGY_COST.work, onClick: onWork },
+    { emoji: '😴', title: '睡觉', desc: '结束今天:回精力,清社死,扣房租', cost: 0, onClick: onSleep },
   ]
   return (
     <div className="hub-wrap fade-in">
@@ -329,26 +389,44 @@ function Hub({
           {s.day > 3 && s.day <= 9 && '约会才能大幅拉好感,但钱包和风险都要管理。'}
           {s.day > 9 && `倒计时 ${TOTAL_DAYS - s.day + 1} 天,该把话说开了。`}
         </div>
+        {hint && (
+          <div style={{ fontSize: 12.5, color: 'var(--purple)', fontStyle: 'italic', lineHeight: 1.6, marginBottom: 10 }}>
+            {hint}
+          </div>
+        )}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {SKILLS.map((sk) => (
-            <span key={sk.id} className="slot-tag" style={{ fontSize: 11.5 }}>
-              {sk.emoji}
-              {sk.name} {s.skills[sk.id]}
-            </span>
-          ))}
+          <span className="slot-tag" style={{ fontSize: 11.5 }}>
+            {origin.emoji}
+            {origin.name}
+          </span>
+          <span className="slot-tag" style={{ fontSize: 11.5 }}>
+            🎓文化水平 {s.skills.culture}
+          </span>
+          <span className="slot-tag" style={{ fontSize: 11.5 }}>
+            🍺酒量 ???
+          </span>
+          <span className="slot-tag" style={{ fontSize: 11.5 }}>
+            月薪 ¥{s.salary}
+          </span>
         </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9, flexShrink: 0 }}>
         <div className="action-grid">
-          {actions.map((a) => (
-            <button key={a.title} className="action-card" onClick={a.onClick}>
-              <div className="a-title">
-                {a.emoji} {a.title}
-              </div>
-              <div className="a-desc">{a.desc}</div>
-            </button>
-          ))}
+          {actions.map((a) => {
+            const disabled = a.cost > 0 && s.energy < a.cost
+            return (
+              <button key={a.title} className="action-card" disabled={disabled} style={disabled ? { opacity: 0.4 } : undefined} onClick={a.onClick}>
+                <div className="a-title">
+                  {a.emoji} {a.title}
+                  {a.cost > 0 && (
+                    <span style={{ fontSize: 11, color: 'var(--text-faint)', fontWeight: 600 }}> ⚡{a.cost}</span>
+                  )}
+                </div>
+                <div className="a-desc">{a.desc}</div>
+              </button>
+            )
+          })}
         </div>
         {s.day >= 8 && (
           <button className="btn" style={{ borderColor: 'rgba(255,184,77,.4)', padding: '10px 14px' }} onClick={onFeast}>
@@ -392,6 +470,19 @@ function NpcList({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
         {chars.map((c) => {
           const n = s.npcs[c.id]
+          if (n.stage === 'locked') {
+            return (
+              <div key={c.id} className="npc-card dead" style={{ opacity: 0.35 }}>
+                <div className="big-avatar" style={{ background: 'var(--panel2)' }}>
+                  ❓
+                </div>
+                <div className="info">
+                  <div className="name">???</div>
+                  <div className="sub">「心动Beijing」正在为你物色……有人离开后会自动推荐新朋友</div>
+                </div>
+              </div>
+            )
+          }
           const dead = !isAlive(n)
           const canMind = s.skills.mind >= 6
           const hiddenReady = (c.hiddenTopics ?? []).some(
@@ -466,7 +557,7 @@ function SpotPick({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
         {profile.dateSpots.map((spot, i) => {
           const bg = SCENE_BG[spot.template === 'citywalk' ? 'walk' : spot.template === 'shopping' ? 'shop' : spot.template]
-          const cant = s.wallet < spot.price
+          const cant = s.wallet - spot.price <= 0
           return (
             <button key={i} className="npc-card" disabled={cant} onClick={() => onPick(i)} style={{ opacity: cant ? 0.45 : 1 }}>
               <div className="big-avatar" style={{ background: bg.grad }}>
@@ -478,6 +569,62 @@ function SpotPick({
               </div>
               <div style={{ fontSize: 14, fontWeight: 800, color: cant ? 'var(--red)' : 'var(--accent2)' }}>
                 ¥{spot.price}
+              </div>
+            </button>
+          )
+        })}
+      </div>
+      <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 12 }}>
+        价格为两人消费。约完钱包会变成 0 的地方,系统替你划掉了——钱归零就寄。
+      </p>
+    </div>
+  )
+}
+
+// ============ 行头选择(钱抬排面) ============
+function OutfitPick({
+  s,
+  profile,
+  spotIdx,
+  onBack,
+  onPick,
+}: {
+  s: GameState
+  profile: CharacterProfile
+  spotIdx: number
+  onBack: () => void
+  onPick: (outfitIdx: number) => void
+}) {
+  const spot = profile.dateSpots[spotIdx]
+  return (
+    <div className="scroll fade-in" style={{ padding: '12px 14px 24px' }}>
+      <button className="btn ghost" style={{ width: 'auto', padding: '4px 0', fontSize: 14 }} onClick={onBack}>
+        ← 返回
+      </button>
+      <h3 style={{ fontSize: 17, fontWeight: 800, margin: '4px 0 4px' }}>出发前,拾掇一下?</h3>
+      <p style={{ fontSize: 12.5, color: 'var(--text-dim)', marginBottom: 12 }}>
+        📍 {spot.label}(¥{spot.price}) · 余额 ¥{s.wallet}
+        <br />
+        行头临时抬高「排面」,只对这次约会生效。
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+        {OUTFITS.map((o, i) => {
+          const total = spot.price + o.cost
+          const cant = s.wallet - total <= 0
+          return (
+            <button key={i} className="npc-card" disabled={cant} onClick={() => onPick(i)} style={{ opacity: cant ? 0.45 : 1 }}>
+              <div className="big-avatar" style={{ background: 'var(--panel2)' }}>
+                {i === 0 ? '🧢' : i === 1 ? '👔' : '🤵'}
+              </div>
+              <div className="info">
+                <div className="name">
+                  {o.name}
+                  {o.bonus > 0 && <span style={{ fontSize: 11, color: 'var(--accent2)' }}> 排面+{o.bonus}</span>}
+                </div>
+                <div className="sub">{o.desc}</div>
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: cant ? 'var(--red)' : 'var(--accent2)' }}>
+                {o.cost > 0 ? `¥${o.cost}` : '免费'}
               </div>
             </button>
           )
@@ -516,7 +663,6 @@ function SessionView({ s, sess, onFavor, onDanmaku, onPendingEnding, onFinish, f
   const revealRef = useRef(0)
   const [typing, setTyping] = useState(false)
   const typingRef = useRef(false)
-  const [dice, setDice] = useState<{ result: CheckResult } | null>(null)
   const [finished, setFinished] = useState(false)
   const appliedNodes = useRef<Set<string>>(new Set())
   const syntheticEnd = useRef(false)
@@ -555,7 +701,7 @@ function SessionView({ s, sess, onFavor, onDanmaku, onPendingEnding, onFinish, f
   }
 
   function tap() {
-    if (dice || typing || typingRef.current || finished || !node) return
+    if (typing || typingRef.current || finished || !node) return
     if (revealRef.current < node.lines.length) {
       const line = node.lines[revealRef.current]
       revealRef.current++
@@ -609,7 +755,7 @@ function SessionView({ s, sess, onFavor, onDanmaku, onPendingEnding, onFinish, f
   }
 
   function pickChoice(c: ChoiceDef) {
-    if (dice || finished) return
+    if (finished) return
     if (c.require && s.skills[c.require.skill] < c.require.min) return
 
     appendLine({ who: 'me', text: c.text })
@@ -636,8 +782,10 @@ function SessionView({ s, sess, onFavor, onDanmaku, onPendingEnding, onFinish, f
     }
 
     if (c.check) {
+      // 暗骰:检定静默进行,结果只通过剧情走向体现
       const result = performCheck(s, npc, c.check)
-      setDice({ result })
+      markChoicesConsumed()
+      enterNode(result.goto)
       return
     }
     if (c.goto) {
@@ -660,14 +808,6 @@ function SessionView({ s, sess, onFavor, onDanmaku, onPendingEnding, onFinish, f
     onDanmaku(['#block'])
     syntheticEnd.current = true
     setFinished(true)
-  }
-
-  function onDiceDone() {
-    if (!dice) return
-    const goto = dice.result.goto
-    setDice(null)
-    markChoicesConsumed()
-    enterNode(goto)
   }
 
   const visibleChoices = getVisibleChoices()
@@ -713,7 +853,7 @@ function SessionView({ s, sess, onFavor, onDanmaku, onPendingEnding, onFinish, f
             </div>
           </div>
         )}
-        {!typing && !finished && visibleChoices.length === 0 && !dice && (
+        {!typing && !finished && visibleChoices.length === 0 && (
           <div className="tap-hint">点击继续 ▸</div>
         )}
       </div>
@@ -726,11 +866,10 @@ function SessionView({ s, sess, onFavor, onDanmaku, onPendingEnding, onFinish, f
         </div>
       )}
 
-      {visibleChoices.length > 0 && !dice && (
+      {visibleChoices.length > 0 && (
         <div className="choices">
           {visibleChoices.map((c, i) => {
             const locked = c.require && s.skills[c.require.skill] < c.require.min
-            const skillName = c.check ? SKILLS.find((x) => x.id === c.check!.skill) : null
             return (
               <button
                 key={i}
@@ -738,12 +877,6 @@ function SessionView({ s, sess, onFavor, onDanmaku, onPendingEnding, onFinish, f
                 style={{ animationDelay: `${i * 0.07}s` }}
                 onClick={() => !locked && pickChoice(c)}
               >
-                {skillName && (
-                  <span className="check-tag">
-                    🎲{skillName.emoji}
-                    {skillName.name}
-                  </span>
-                )}
                 {c.text}
                 {locked && <span className="lock-reason">🔒 {c.require!.gray}</span>}
               </button>
@@ -751,8 +884,6 @@ function SessionView({ s, sess, onFavor, onDanmaku, onPendingEnding, onFinish, f
           })}
         </div>
       )}
-
-      {dice && <DiceRoll result={dice.result} onDone={onDiceDone} />}
     </>
   )
 }
@@ -785,7 +916,7 @@ function EndingScreen({
   detail?: string
   onExit: () => void
 }) {
-  const def = findEnding(id)
+  const def = findEnding(id, s.version)
   if (!def) {
     return (
       <div style={{ padding: 30 }}>

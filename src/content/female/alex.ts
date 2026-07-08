@@ -13,6 +13,7 @@ export const alex: CharacterProfile = {
   deathTags: ['zhi'],
   decay: 9,
   mainSkill: 'liquor',
+  spicy: 0.12,
   confirmYes: '「我谈过最大的单子是九位数,签字的时候手都没抖。」他看着你,「刚才想说这句话的时候,抖了。在一起吧。」',
   confirmNo: '「你是我见过最值得投资的人……但我这支股票现在质押率太高了,别把你套进来。」',
   moodLines: {
@@ -101,9 +102,11 @@ export const alex: CharacterProfile = {
     ]),
   ],
   dateSpots: [
-    { template: 'bar', location: '国贸顶层酒廊', price: 450, label: '云端酒局(他的战场)' },
-    { template: 'dinner', location: '日料Omakase', price: 600, label: 'Omakase(不看价格的那种)' },
-    { template: 'shopping', location: 'SKP', price: 350, label: 'SKP购物(他的舒适区)' },
+    { template: 'bar', location: '国贸顶层酒廊', price: 1200, label: '云端酒局(他的战场)' },
+    { template: 'dinner', location: '日料Omakase', price: 2600, label: 'Omakase(不看价格的那种)' },
+    { template: 'shopping', location: 'SKP', price: 1000, label: 'SKP购物(他的舒适区)' },
+    { template: 'ktv', location: '国贸K歌之王', price: 600, label: 'K歌(应酬之王的副本)' },
+    { template: 'sport', location: '首钢滑雪大跳台', price: 800, label: '滑雪(他唯一的放空方式)' },
   ],
   he: {
     title: '重仓',

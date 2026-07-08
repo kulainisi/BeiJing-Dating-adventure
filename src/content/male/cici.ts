@@ -13,6 +13,7 @@ export const cici: CharacterProfile = {
   deathTags: ['zhi'],
   decay: 9,
   mainSkill: 'image',
+  spicy: 0.15,
   confirmYes: '「这条我不发。」她把手机扣在桌上,镜头朝下,「从现在起,有些画面只留给我自己看。」',
   confirmNo: '「你很好,可我连感情都想调个滤镜再发……让我先学会素颜面对生活,好吗?」',
   moodLines: {
@@ -101,9 +102,10 @@ export const cici: CharacterProfile = {
     ]),
   ],
   dateSpots: [
-    { template: 'expo', location: '798·当红艺术展', price: 200, label: '网红大展(出片刚需)' },
-    { template: 'shopping', location: '三里屯太古里', price: 400, label: '太古里街拍' },
-    { template: 'dinner', location: '安福路风Brunch店', price: 300, label: 'Brunch局(先拍后吃)' },
+    { template: 'expo', location: '798·当红艺术展', price: 240, label: '网红大展(出片刚需)' },
+    { template: 'shopping', location: '三里屯太古里', price: 800, label: '太古里街拍' },
+    { template: 'dinner', location: '安福路风Brunch店', price: 420, label: 'Brunch局(先拍后吃)' },
+    { template: 'park', location: '环球影城', price: 1500, label: '环球影城(出片圣地)' },
   ],
   he: {
     title: '关闭美颜',

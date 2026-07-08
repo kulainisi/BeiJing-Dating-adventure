@@ -1,15 +1,7 @@
 import { useMemo, useState } from 'react'
-import { GameState, SKILL_MAX, SKILL_MIN, SKILL_POINTS, SKILLS, SkillId, Version } from '@/engine/types'
+import { EDU_TIERS, EduId, GameState, ORIGINS, parallelCap, Version } from '@/engine/types'
 import { newGame } from '@/engine/game'
 import { loadRun } from '@/engine/save'
-
-const PRESETS: { name: string; skills: Record<SkillId, number> }[] = [
-  { name: '⚖️ 六边形废物', skills: { mouth: 3, mind: 3, liquor: 3, culture: 3, image: 4, money: 4 } },
-  { name: '💬 嘴强王者', skills: { mouth: 8, mind: 5, liquor: 1, culture: 2, image: 2, money: 2 } },
-  { name: '💰 钞能力选手', skills: { mouth: 2, mind: 2, liquor: 2, culture: 1, image: 5, money: 8 } },
-  { name: '🎨 落魄文青', skills: { mouth: 3, mind: 3, liquor: 3, culture: 8, image: 2, money: 1 } },
-  { name: '🧠 人间清醒', skills: { mouth: 3, mind: 8, liquor: 3, culture: 2, image: 2, money: 2 } },
-]
 
 export function Home({
   onStart,
@@ -19,19 +11,46 @@ export function Home({
   onGallery: () => void
 }) {
   const [version, setVersion] = useState<Version | null>(null)
-  const [skills, setSkills] = useState<Record<SkillId, number>>(PRESETS[0].skills)
+  const [edu, setEdu] = useState<EduId>('putong')
+  const [pending, setPending] = useState<GameState | null>(null)
   const saved = useMemo(() => loadRun(), [])
 
-  const used = SKILLS.reduce((a, s) => a + skills[s.id], 0)
-  const left = SKILL_POINTS - used
-
-  function adjust(id: SkillId, d: number) {
-    const v = skills[id] + d
-    if (v < SKILL_MIN || v > SKILL_MAX) return
-    if (d > 0 && left <= 0) return
-    setSkills({ ...skills, [id]: v })
+  // ============ 投胎揭晓页 ============
+  if (pending) {
+    const origin = ORIGINS.find((o) => o.id === pending.origin)!
+    const eduT = EDU_TIERS.find((e) => e.id === pending.edu)!
+    return (
+      <div className="fade-in" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div className="scroll" style={{ padding: '10vh 22px 16px' }}>
+          <div style={{ textAlign: 'center', fontSize: 46 }}>{origin.emoji}</div>
+          <h2 style={{ textAlign: 'center', fontSize: 24, fontWeight: 900, margin: '10px 0 4px' }}>
+            {origin.name}
+          </h2>
+          <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-faint)', marginBottom: 16 }}>
+            —— 投胎结果,不可重投。北京不接受退货。——
+          </p>
+          <p style={{ fontSize: 14.5, color: 'var(--text-dim)', lineHeight: 1.9 }}>{origin.reveal}</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 18, justifyContent: 'center' }}>
+            <span className="slot-tag">💰 存款 ¥{pending.wallet}</span>
+            <span className="slot-tag">🏠 {pending.rent > 0 ? `房租 ¥${pending.rent}/月` : '有房(家里给的)'}</span>
+            <span className="slot-tag">💼 月薪 ¥{pending.salary}</span>
+            <span className="slot-tag">⚡ 精力 {pending.maxEnergy}(并聊上限 {parallelCap(pending.maxEnergy)} 人)</span>
+            <span className="slot-tag">
+              {eduT.emoji} 文化水平 {pending.skills.culture}
+            </span>
+            <span className="slot-tag">🍺 酒量 ???(喝了才知道)</span>
+          </div>
+        </div>
+        <div style={{ padding: '8px 16px calc(12px + var(--safe-bottom))', flexShrink: 0 }}>
+          <button className="btn primary" onClick={() => onStart(pending)}>
+            🚀 就这命了,开始这14天
+          </button>
+        </div>
+      </div>
+    )
   }
 
+  // ============ 标题页 ============
   if (!version) {
     return (
       <div className="scroll fade-in" style={{ padding: '0 22px' }}>
@@ -41,7 +60,7 @@ export function Home({
             北京<span style={{ color: 'var(--accent)' }}>Dating</span>模拟器
           </h1>
           <p style={{ color: 'var(--text-dim)', fontSize: 13.5, marginTop: 8, lineHeight: 1.8 }}>
-            14天 · 5个人 · 一张随时会塌的关系网
+            14天 · 一整池北京男女 · 一张随时会塌的关系网
             <br />
             一款人均社死的恋爱冒险游戏
           </p>
@@ -71,74 +90,56 @@ export function Home({
     )
   }
 
+  // ============ 文化三档 + 投胎 ============
   return (
     <div className="fade-in" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={{ padding: '12px 16px 4px', flexShrink: 0 }}>
         <button className="btn ghost" style={{ width: 'auto', padding: '2px 0', fontSize: 14 }} onClick={() => setVersion(null)}>
           ← 返回
         </button>
-        <h2 style={{ fontSize: 19, fontWeight: 900, marginTop: 2 }}>
-          出生点数分配
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-dim)', marginLeft: 10 }}>
-            剩余 <b style={{ color: left > 0 ? 'var(--accent2)' : 'var(--green)', fontSize: 16 }}>{left}</b> 点
-          </span>
-        </h2>
+        <h2 style={{ fontSize: 19, fontWeight: 900, marginTop: 2 }}>你把青春点给了什么?</h2>
+        <p style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 4, lineHeight: 1.7 }}>
+          唯一由你决定的,是文化背景。精力和钱?那要看投胎。
+        </p>
       </div>
 
-      <div className="scroll" style={{ padding: '8px 16px 10px', minHeight: 0 }}>
-        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 10 }}>
-          {PRESETS.map((p) => (
+      <div className="scroll" style={{ padding: '10px 16px', minHeight: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+          {EDU_TIERS.map((t) => (
             <button
-              key={p.name}
-              className="btn"
-              style={{ width: 'auto', padding: '5px 11px', fontSize: 12, borderRadius: 999 }}
-              onClick={() => setSkills(p.skills)}
+              key={t.id}
+              className="npc-card"
+              style={{
+                borderColor: edu === t.id ? 'var(--accent)' : undefined,
+                background: edu === t.id ? 'rgba(255,93,143,.08)' : undefined,
+              }}
+              onClick={() => setEdu(t.id)}
             >
-              {p.name}
+              <div className="big-avatar" style={{ background: 'var(--panel2)' }}>
+                {t.emoji}
+              </div>
+              <div className="info">
+                <div className="name">{t.name}</div>
+                <div className="sub" style={{ whiteSpace: 'normal' }}>
+                  {t.desc}
+                </div>
+              </div>
+              {edu === t.id && <span style={{ color: 'var(--accent)', fontWeight: 800 }}>✓</span>}
             </button>
           ))}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {SKILLS.map((s) => (
-            <div className="skill-row" key={s.id}>
-              <div className="s-emoji">{s.emoji}</div>
-              <div className="s-info">
-                <div className="s-name">{s.name}</div>
-                <div className="s-desc">{s.desc}</div>
-                <div className="pips">
-                  {Array.from({ length: SKILL_MAX }, (_, i) => (
-                    <i key={i} className={i < skills[s.id] ? 'on' : ''} />
-                  ))}
-                </div>
-              </div>
-              <button className="pt-btn" disabled={skills[s.id] <= SKILL_MIN} onClick={() => adjust(s.id, -1)}>
-                −
-              </button>
-              <div className="s-val">{skills[s.id]}</div>
-              <button
-                className="pt-btn"
-                disabled={skills[s.id] >= SKILL_MAX || left <= 0}
-                onClick={() => adjust(s.id, 1)}
-              >
-                +
-              </button>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-faint)' }}>
-          💰 钞能力 {skills.money} → 开局资金 ¥{600 + skills.money * 350} · 北京不相信眼泪,但相信面板
+        <div style={{ marginTop: 16, padding: 12, borderRadius: 12, background: 'var(--card)', border: '1px dashed var(--line)', fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.8 }}>
+          🎲 <b>投胎须知</b>:精力与家底由投胎骰决定,大概率是普通北漂;极小概率抽中传说出身
+          (💰钞能力 / ⚡高精力宝宝),抽中才揭晓,<b>不可重投</b>。
+          <br />
+          🍺 酒量每局随机,任何面板都不显示——喝了才知道。
         </div>
       </div>
 
       <div style={{ padding: '8px 16px calc(12px + var(--safe-bottom))', flexShrink: 0, borderTop: '1px solid var(--line)' }}>
-        <button
-          className="btn primary"
-          disabled={left !== 0}
-          onClick={() => onStart(newGame(version, skills))}
-        >
-          {left === 0 ? `🚀 开始这14天(${version === 'male' ? '男版' : '女版'})` : `还剩 ${left} 点没分完`}
+        <button className="btn primary" onClick={() => setPending(newGame(version, edu))}>
+          🎲 掷投胎骰({version === 'male' ? '男版' : '女版'})
         </button>
       </div>
     </div>

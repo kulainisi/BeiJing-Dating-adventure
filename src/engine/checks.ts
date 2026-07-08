@@ -1,4 +1,5 @@
 import { rollD20 } from './rng'
+import { bumpMood } from './mood'
 import { CheckDef, GameState, MOODS, NpcState } from './types'
 
 export interface CheckResult {
@@ -34,6 +35,8 @@ export function performCheck(s: GameState, npc: NpcState | null, def: CheckDef):
 
   if (outcome === 'crit' || outcome === 'pass') s.stats.checksPassed++
   else s.stats.checksFailed++
+  if (outcome === 'fumble') bumpMood(s, -6)
+  if (outcome === 'crit') bumpMood(s, 4)
 
   return { roll, skillVal, dc, total, outcome, goto }
 }
