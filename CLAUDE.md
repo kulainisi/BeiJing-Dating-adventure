@@ -36,6 +36,9 @@ npm run check-story  # ★ 内容校验:任何剧情改动后必跑,抓断头节
 
 ## 部署与安全
 
-- push 到 main = 自动上线,无需其他操作;`public/_headers` 是 CSP 等安全响应头,勿删
+- **发布闸门(重要)**:push 到 main = 直接公网上线。因此**严禁在用户明确确认"发布/推送"之前执行 `git push`**。
+  正确流程:改动 → check-story → build 验证 → 本地 commit → 向用户汇报改了什么 → 等用户确认后才推送。
+  (`.claude/settings.json` 已配置 `git push` 强制弹出确认,属双保险,勿删)
+- `public/_headers` 是 CSP 等安全响应头,勿删
 - 无后端、无用户数据;如未来加排行榜/账号,用 Cloudflare Workers + D1,不要自建服务器
 - 本机 git 代理已设为 http://127.0.0.1:10809(v2rayN);GitHub 访问失败先查代理是否在跑
