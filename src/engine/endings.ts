@@ -73,3 +73,19 @@ export function checkAllBlocked(s: GameState): boolean {
   const noneLeft = Object.values(s.npcs).every((n) => !isAlive(n) && n.stage !== 'locked')
   return noneLeft && s.stats.blocks >= LONELY_BLOCK_THRESHOLD
 }
+
+/**
+ * 戏剧性组合结局:满足特定行为组合时,在动作节点(backToHub)自动触发。
+ * 返回结局 id 或 null。优先级从上到下。
+ */
+export function checkComboEnding(s: GameState): string | null {
+  const confirmed = confirmedList(s).length
+  const st = s.stats
+  // 🍵 脚踏两船:同时有 2+ 官方对象 → 随时可能东窗事发(躲过则活到结算走时间管理大师)
+  if (confirmed >= 2 && chance(0.22)) return 'caught_cheating'
+  // 🐟 鱼塘塌方:并聊拉满(海王)+ 亲手拉黑够多 → 众叛亲离
+  if (st.maxParallel >= 4 && st.blocks >= 3) return 'pond_collapse'
+  // 🍺 酒精依赖:喝够多 + 反复断片
+  if (st.drinks >= 8 && st.blackouts >= 2) return 'alcoholic'
+  return null
+}

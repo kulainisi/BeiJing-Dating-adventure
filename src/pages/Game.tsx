@@ -29,7 +29,7 @@ import {
 import { chance } from '@/engine/rng'
 import { applyEffects, blockNpc, fateRoll, isAlive, refillPool, relationTier } from '@/engine/relations'
 import { bumpMood, moodAura, moodDepressed, moodExtremeRoll, moodHint } from '@/engine/mood'
-import { checkAllBlocked, settle } from '@/engine/endings'
+import { checkAllBlocked, checkComboEnding, settle } from '@/engine/endings'
 import { performCheck } from '@/engine/checks'
 import { pick, seedRng } from '@/engine/rng'
 import { addDeath, addRun, clearRun, saveRun, unlockAchievements, unlockEnding } from '@/engine/save'
@@ -226,6 +226,8 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
     if (moodDepressed(s)) return endGame('depression') // 加班内耗到底:确定性抑郁判负
     if (checkAllBlocked(s)) return endGame('all_blocked')
     if (s.wallet <= 0) return endGame('bankrupt')
+    const combo = checkComboEnding(s) // 戏剧性组合结局(脚踏两船翻船/鱼塘塌方/酒精依赖)
+    if (combo) return endGame(combo)
     checkMidAchievements()
     if (s.energy <= 0) {
       showToast('⚡ 精力耗尽,今天到此为止。')

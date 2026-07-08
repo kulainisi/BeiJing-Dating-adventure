@@ -18,6 +18,7 @@ const KNOWN_GLOBAL = new Set([
   'time_manager', 'seaking', 'marriage', 'euphoria', 'emo_quit', 'goodcard', 'ambiguous',
   'readnoreply', 'all_blocked', 'bankrupt', 'awkward_full', 'xhs_posted', 'blackout_confess',
   'houhai_uncle', 'give_up_feast', 'fate_win', 'depression',
+  'caught_cheating', 'pond_collapse', 'alcoholic',
 ])
 
 /** 校验结局 id:全局白名单,或 he_/true_ 前缀的角色结局 */

@@ -19,6 +19,7 @@ const GLOBAL_ENDINGS = [
   'time_manager', 'seaking', 'marriage', 'euphoria', 'emo_quit', 'depression', 'goodcard',
   'ambiguous', 'readnoreply', 'all_blocked', 'bankrupt', 'awkward_full', 'xhs_posted',
   'blackout_confess', 'houhai_uncle', 'give_up_feast', 'fate_win',
+  'caught_cheating', 'pond_collapse', 'alcoholic',
 ]
 const MALE_CHARS = ['linda', 'xiaoman', 'yutong', 'cici', 'nana', 'luna', 'jingjing', 'xiaolu', 'linyi', 'vv', 'beibei', 'coco']
 const FEMALE_CHARS = ['ligong', 'kevin', 'chenyu', 'alex', 'zhouzheng', 'erhuange', 'laopao', 'henry', 'dayong', 'abao', 'laomo', 'guyi']
