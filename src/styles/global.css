@@ -59,6 +59,7 @@ input {
 /* ============ 手机壳容器 ============ */
 .phone-shell {
   height: 100%;
+  height: 100dvh; /* 现代移动浏览器:随地址栏伸缩的真实可视高度 */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -355,8 +356,12 @@ input {
   }
 }
 
-/* ============ 选项 ============ */
+/* ============ 选项(固定底部,自身超高时内部滚动,页面不滚) ============ */
 .choices {
+  flex-shrink: 0;
+  max-height: 52%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 10px 14px calc(14px + var(--safe-bottom));
   display: flex;
   flex-direction: column;
@@ -1000,4 +1005,150 @@ input {
   color: var(--text-faint);
   letter-spacing: 2px;
   padding: 18px 2px 8px;
+}
+
+/* ============ 行动中心(不滚动布局) ============ */
+.hub-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 12px 14px calc(12px + var(--safe-bottom));
+}
+
+.hub-top {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  flex-shrink: 0;
+}
+
+.action-card {
+  border-radius: var(--radius);
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  padding: 12px 12px 10px;
+  text-align: left;
+  transition: transform 0.08s;
+}
+
+.action-card:active {
+  transform: scale(0.97);
+}
+
+.action-card .a-title {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.action-card .a-desc {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+/* ============ 结局图保存浮层 ============ */
+.img-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 6, 12, 0.94);
+  backdrop-filter: blur(8px);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 18px;
+}
+
+.img-overlay img {
+  max-width: 86%;
+  max-height: 56%;
+  border-radius: 14px;
+  box-shadow: 0 16px 60px rgba(0, 0, 0, 0.7);
+}
+
+.img-overlay .hint {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  text-align: center;
+  line-height: 1.7;
+}
+
+.img-overlay .actions {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  width: min(320px, 86%);
+}
+
+/* ============ 小屏高度压缩(iPhone SE / 小安卓等) ============ */
+@media (max-height: 740px) {
+  .hud {
+    padding: 7px 12px;
+  }
+  .chat-area {
+    padding: 10px 12px 14px;
+    gap: 8px;
+  }
+  .bubble {
+    font-size: 14px;
+    padding: 8px 11px;
+  }
+  .avatar {
+    width: 30px;
+    height: 30px;
+    font-size: 15px;
+  }
+  .line-nar {
+    font-size: 12px;
+  }
+  .choices {
+    gap: 7px;
+    padding-top: 8px;
+  }
+  .choice-btn {
+    padding: 9px 12px;
+    font-size: 13.5px;
+  }
+  .scene-head {
+    padding: 10px 16px 9px;
+  }
+  .scene-head .title {
+    font-size: 17px;
+  }
+  .scene-head .deco {
+    font-size: 38px;
+  }
+  .btn {
+    padding: 11px 14px;
+    font-size: 15px;
+  }
+  .action-card {
+    padding: 9px 11px 8px;
+  }
+  .action-card .a-title {
+    font-size: 14px;
+  }
+  .skill-row {
+    padding: 6px 10px;
+  }
+  .skill-row .s-desc {
+    display: none;
+  }
+  .pt-btn {
+    width: 28px;
+    height: 28px;
+  }
+  .section-title {
+    padding: 10px 2px 6px;
+  }
 }

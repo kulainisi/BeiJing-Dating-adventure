@@ -312,49 +312,57 @@ function Hub({
 }) {
   const alive = chars.filter((c) => isAlive(s.npcs[c.id]))
   const unread = chars.filter((c) => isAlive(s.npcs[c.id]) && s.npcs[c.id].unread).length
+  const actions: { emoji: string; title: string; desc: string; onClick: () => void }[] = [
+    { emoji: '💬', title: '回消息', desc: '推进一个人的聊天', onClick: onChat },
+    { emoji: '📍', title: '约会', desc: '花钱,涨好感,有戏剧', onClick: onDate },
+    { emoji: '🧑‍💻', title: '加班搞钱', desc: '+钱,全员好感小跌', onClick: onWork },
+    { emoji: '🛋️', title: '躺平回血', desc: '大幅清空社死值', onClick: onRest },
+  ]
   return (
-    <div className="scroll fade-in" style={{ padding: '16px 14px 24px' }}>
-      <div style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.7, marginBottom: 14 }}>
-        「心动Beijing」在聊:{alive.length} 人
-        {unread > 0 && <span style={{ color: 'var(--accent)' }}> · {unread} 条未读</span>}
-        <br />
-        {s.day <= 3 && '前期多聊聊,摸清每个人的雷区。'}
-        {s.day > 3 && s.day <= 9 && '约会才能大幅拉好感,但钱包和风险都要管理。'}
-        {s.day > 9 && `倒计时 ${TOTAL_DAYS - s.day + 1} 天,该把话说开了。`}
+    <div className="hub-wrap fade-in">
+      <div className="hub-top">
+        <div style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.7, marginBottom: 10 }}>
+          「心动Beijing」在聊:{alive.length} 人
+          {unread > 0 && <span style={{ color: 'var(--accent)' }}> · {unread} 条未读</span>}
+          <br />
+          {s.day <= 3 && '前期多聊聊,摸清每个人的雷区。'}
+          {s.day > 3 && s.day <= 9 && '约会才能大幅拉好感,但钱包和风险都要管理。'}
+          {s.day > 9 && `倒计时 ${TOTAL_DAYS - s.day + 1} 天,该把话说开了。`}
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {SKILLS.map((sk) => (
+            <span key={sk.id} className="slot-tag" style={{ fontSize: 11.5 }}>
+              {sk.emoji}
+              {sk.name} {s.skills[sk.id]}
+            </span>
+          ))}
+        </div>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <button className="btn" onClick={onChat}>
-          💬 回消息 <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>推进一个人的聊天</span>
-        </button>
-        <button className="btn" onClick={onDate}>
-          📍 约会 <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>花钱,涨好感,有戏剧</span>
-        </button>
-        <button className="btn" onClick={onWork}>
-          🧑‍💻 加班搞钱 <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>+钱,但全员好感小跌</span>
-        </button>
-        <button className="btn" onClick={onRest}>
-          🛋️ 躺平回血 <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>大幅清空社死值</span>
-        </button>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 9, flexShrink: 0 }}>
+        <div className="action-grid">
+          {actions.map((a) => (
+            <button key={a.title} className="action-card" onClick={a.onClick}>
+              <div className="a-title">
+                {a.emoji} {a.title}
+              </div>
+              <div className="a-desc">{a.desc}</div>
+            </button>
+          ))}
+        </div>
         {s.day >= 8 && (
-          <button className="btn" style={{ borderColor: 'rgba(255,184,77,.4)' }} onClick={onFeast}>
+          <button className="btn" style={{ borderColor: 'rgba(255,184,77,.4)', padding: '10px 14px' }} onClick={onFeast}>
             🍽️ {armFeast ? '再点一次:确认退出所有暧昧' : '不玩了,自己去吃顿好的'}
           </button>
         )}
+        <button
+          className="btn ghost"
+          style={{ fontSize: 12.5, color: 'var(--text-faint)', padding: '6px 14px' }}
+          onClick={onExit}
+        >
+          ← 回主菜单(进度已自动保存)
+        </button>
       </div>
-
-      <div className="section-title">技能面板</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        {SKILLS.map((sk) => (
-          <span key={sk.id} className="slot-tag" style={{ fontSize: 12 }}>
-            {sk.emoji}
-            {sk.name} {s.skills[sk.id]}
-          </span>
-        ))}
-      </div>
-
-      <button className="btn ghost" style={{ marginTop: 22, fontSize: 13, color: 'var(--text-faint)' }} onClick={onExit}>
-        ← 回主菜单(进度已自动保存)
-      </button>
     </div>
   )
 }
@@ -708,12 +716,15 @@ function SessionView({ s, sess, onFavor, onDanmaku, onPendingEnding, onFinish, f
         {!typing && !finished && visibleChoices.length === 0 && !dice && (
           <div className="tap-hint">点击继续 ▸</div>
         )}
-        {finished && (
-          <button className="btn primary" style={{ marginTop: 8 }} onClick={onFinish}>
+      </div>
+
+      {finished && (
+        <div className="choices">
+          <button className="btn primary" onClick={onFinish}>
             {sess.type === 'event' ? '继续 →' : '结束本次互动 →'}
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {visibleChoices.length > 0 && !dice && (
         <div className="choices">

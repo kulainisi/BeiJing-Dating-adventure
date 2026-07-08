@@ -24,14 +24,14 @@ interface Props {
 
 export function EndingCard({ ending, state, npcName, detail, onRestart, onGallery }: Props) {
   const rs = RANK_STYLE[ending.rank]
-  const [saved, setSaved] = useState(false)
+  const [preview, setPreview] = useState<string | null>(null)
+  const [shareMsg, setShareMsg] = useState('')
   const cardRef = useRef<HTMLDivElement>(null)
 
   const sqm = (state.stats.spent / 80000).toFixed(5)
 
-  function exportCard() {
-    try {
-      const c = document.createElement('canvas')
+  function drawCanvas(): HTMLCanvasElement {
+    const c = document.createElement('canvas')
       c.width = 720
       c.height = 1080
       const g = c.getContext('2d')!
@@ -75,15 +75,39 @@ export function EndingCard({ ending, state, npcName, detail, onRestart, onGaller
       g.fillStyle = '#5b6b80'
       g.font = '22px sans-serif'
       g.fillText('《北京Dating模拟器》· 一款人均社死的恋爱冒险', 360, 1020)
+    return c
+  }
 
-      const a = document.createElement('a')
-      a.download = `北京Dating结局-${ending.title}.png`
-      a.href = c.toDataURL('image/png')
-      a.click()
-      setSaved(true)
-    } catch {
-      setSaved(true)
+  function openPreview() {
+    setShareMsg('')
+    setPreview(drawCanvas().toDataURL('image/png'))
+  }
+
+  /** 手机端:走系统分享面板(可直接「保存图片」到相册);不支持时提示长按 */
+  async function shareToAlbum() {
+    try {
+      const c = drawCanvas()
+      const blob: Blob | null = await new Promise((res) => c.toBlob(res, 'image/png'))
+      if (!blob) throw new Error('no blob')
+      const file = new File([blob], `北京Dating结局-${ending.title}.png`, { type: 'image/png' })
+      const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean }
+      if (nav.canShare && nav.canShare({ files: [file] }) && nav.share) {
+        await nav.share({ files: [file], title: '北京Dating模拟器' })
+        return
+      }
+      setShareMsg('当前浏览器不支持系统分享,请长按上面的图片保存到相册')
+    } catch (e) {
+      if ((e as Error)?.name === 'AbortError') return // 用户取消分享,不算错
+      setShareMsg('分享未成功,请长按上面的图片保存到相册')
     }
+  }
+
+  /** 桌面端:下载 PNG 文件 */
+  function downloadFile() {
+    const a = document.createElement('a')
+    a.download = `北京Dating结局-${ending.title}.png`
+    a.href = drawCanvas().toDataURL('image/png')
+    a.click()
   }
 
   return (
@@ -150,8 +174,8 @@ export function EndingCard({ ending, state, npcName, detail, onRestart, onGaller
       {ending.xhsPost && <XhsPost version={state.version} />}
 
       <div style={{ padding: '4px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <button className="btn primary" onClick={exportCard}>
-          📸 保存结局卡{saved ? '(保存失败可直接截图)' : ''}
+        <button className="btn primary" onClick={openPreview}>
+          📸 保存结局卡
         </button>
         <button className="btn" onClick={onRestart}>
           🔄 再来一局
@@ -160,6 +184,32 @@ export function EndingCard({ ending, state, npcName, detail, onRestart, onGaller
           📖 查看结局图鉴
         </button>
       </div>
+
+      {preview && (
+        <div className="img-overlay" onClick={(e) => e.target === e.currentTarget && setPreview(null)}>
+          <img src={preview} alt="结局卡" />
+          <div className="hint">
+            📱 手机:<b>长按图片</b>即可保存到相册
+            {shareMsg && (
+              <>
+                <br />
+                {shareMsg}
+              </>
+            )}
+          </div>
+          <div className="actions">
+            <button className="btn primary" onClick={shareToAlbum}>
+              📤 保存到相册 / 分享
+            </button>
+            <button className="btn" onClick={downloadFile}>
+              💾 下载图片文件(电脑用)
+            </button>
+            <button className="btn ghost" onClick={() => setPreview(null)}>
+              关闭
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

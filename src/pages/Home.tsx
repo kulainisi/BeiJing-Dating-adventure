@@ -72,70 +72,75 @@ export function Home({
   }
 
   return (
-    <div className="scroll fade-in" style={{ padding: '18px 16px 24px' }}>
-      <button className="btn ghost" style={{ width: 'auto', padding: '4px 0', fontSize: 14 }} onClick={() => setVersion(null)}>
-        ← 返回
-      </button>
-      <h2 style={{ fontSize: 21, fontWeight: 900, marginTop: 6 }}>出生点数分配</h2>
-      <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '6px 0 14px', lineHeight: 1.7 }}>
-        把 {SKILL_POINTS} 点天赋分给六维。北京不相信眼泪,但相信面板。
-        <br />
-        剩余点数:<b style={{ color: left > 0 ? 'var(--accent2)' : 'var(--green)', fontSize: 15 }}>{left}</b>
-      </p>
-
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-        {PRESETS.map((p) => (
-          <button
-            key={p.name}
-            className="btn"
-            style={{ width: 'auto', padding: '6px 12px', fontSize: 12.5, borderRadius: 999 }}
-            onClick={() => setSkills(p.skills)}
-          >
-            {p.name}
-          </button>
-        ))}
+    <div className="fade-in" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ padding: '12px 16px 4px', flexShrink: 0 }}>
+        <button className="btn ghost" style={{ width: 'auto', padding: '2px 0', fontSize: 14 }} onClick={() => setVersion(null)}>
+          ← 返回
+        </button>
+        <h2 style={{ fontSize: 19, fontWeight: 900, marginTop: 2 }}>
+          出生点数分配
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-dim)', marginLeft: 10 }}>
+            剩余 <b style={{ color: left > 0 ? 'var(--accent2)' : 'var(--green)', fontSize: 16 }}>{left}</b> 点
+          </span>
+        </h2>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-        {SKILLS.map((s) => (
-          <div className="skill-row" key={s.id}>
-            <div className="s-emoji">{s.emoji}</div>
-            <div className="s-info">
-              <div className="s-name">{s.name}</div>
-              <div className="s-desc">{s.desc}</div>
-              <div className="pips">
-                {Array.from({ length: SKILL_MAX }, (_, i) => (
-                  <i key={i} className={i < skills[s.id] ? 'on' : ''} />
-                ))}
-              </div>
-            </div>
-            <button className="pt-btn" disabled={skills[s.id] <= SKILL_MIN} onClick={() => adjust(s.id, -1)}>
-              −
-            </button>
-            <div className="s-val">{skills[s.id]}</div>
+      <div className="scroll" style={{ padding: '8px 16px 10px', minHeight: 0 }}>
+        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 10 }}>
+          {PRESETS.map((p) => (
             <button
-              className="pt-btn"
-              disabled={skills[s.id] >= SKILL_MAX || left <= 0}
-              onClick={() => adjust(s.id, 1)}
+              key={p.name}
+              className="btn"
+              style={{ width: 'auto', padding: '5px 11px', fontSize: 12, borderRadius: 999 }}
+              onClick={() => setSkills(p.skills)}
             >
-              +
+              {p.name}
             </button>
-          </div>
-        ))}
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {SKILLS.map((s) => (
+            <div className="skill-row" key={s.id}>
+              <div className="s-emoji">{s.emoji}</div>
+              <div className="s-info">
+                <div className="s-name">{s.name}</div>
+                <div className="s-desc">{s.desc}</div>
+                <div className="pips">
+                  {Array.from({ length: SKILL_MAX }, (_, i) => (
+                    <i key={i} className={i < skills[s.id] ? 'on' : ''} />
+                  ))}
+                </div>
+              </div>
+              <button className="pt-btn" disabled={skills[s.id] <= SKILL_MIN} onClick={() => adjust(s.id, -1)}>
+                −
+              </button>
+              <div className="s-val">{skills[s.id]}</div>
+              <button
+                className="pt-btn"
+                disabled={skills[s.id] >= SKILL_MAX || left <= 0}
+                onClick={() => adjust(s.id, 1)}
+              >
+                +
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-faint)' }}>
+          💰 钞能力 {skills.money} → 开局资金 ¥{600 + skills.money * 350} · 北京不相信眼泪,但相信面板
+        </div>
       </div>
 
-      <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-faint)' }}>
-        💰 钞能力 {skills.money} → 开局资金 ¥{600 + skills.money * 350}
+      <div style={{ padding: '8px 16px calc(12px + var(--safe-bottom))', flexShrink: 0, borderTop: '1px solid var(--line)' }}>
+        <button
+          className="btn primary"
+          disabled={left !== 0}
+          onClick={() => onStart(newGame(version, skills))}
+        >
+          {left === 0 ? `🚀 开始这14天(${version === 'male' ? '男版' : '女版'})` : `还剩 ${left} 点没分完`}
+        </button>
       </div>
-
-      <button
-        className="btn primary"
-        style={{ marginTop: 16 }}
-        disabled={left !== 0}
-        onClick={() => onStart(newGame(version, skills))}
-      >
-        {left === 0 ? `🚀 开始这14天(${version === 'male' ? '男版' : '女版'})` : `还剩 ${left} 点没分完`}
-      </button>
     </div>
   )
 }
