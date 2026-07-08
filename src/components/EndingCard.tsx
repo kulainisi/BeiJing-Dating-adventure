@@ -55,61 +55,62 @@ export function EndingCard({ ending, state, npcName, detail, newAchievements, on
   if (state.origin === 'energetic') subBadges.push('⚡ 高精力宝宝')
 
   async function drawCanvas(): Promise<HTMLCanvasElement> {
+    const W = 720
+    const SCRATCH = 1500 // 先画在超高画布上,最后按实际内容高度裁切,消除底部大片留白
     const c = document.createElement('canvas')
-    c.width = 720
-    c.height = 1360
+    c.width = W
+    c.height = SCRATCH
     const g = c.getContext('2d')!
-    const grad = g.createLinearGradient(0, 0, 720, 1360)
+    const grad = g.createLinearGradient(0, 0, W, 1050)
     grad.addColorStop(0, '#231433')
     grad.addColorStop(1, '#0d1420')
     g.fillStyle = grad
-    g.fillRect(0, 0, 720, 1360)
-    g.fillStyle = 'rgba(255,255,255,.05)'
-    for (let i = 0; i < 6; i++) g.fillRect(0, 220 + i * 150, 720, 1)
+    g.fillRect(0, 0, W, SCRATCH)
 
     g.textAlign = 'center'
-    let y = 108
+    let y = 104
 
     // ===== 头版:北京人物鉴定报告 =====
     g.fillStyle = '#ffb84d'
     g.font = 'bold 28px sans-serif'
     g.fillText('🧬 北京人物鉴定报告', 360, y)
-    y += 68
+    y += 66
     g.fillStyle = '#fff'
     g.font = 'bold 50px sans-serif'
     y = wrapText(g, v.title, 360, y, 630, 60) + 46
     // 标签
     g.fillStyle = '#c084fc'
     g.font = 'bold 27px sans-serif'
-    y = wrapText(g, v.tags.join('  '), 360, y, 620, 38) + 30
+    y = wrapText(g, v.tags.join('  '), 360, y, 620, 38) + 44
     // 稀有度
     g.fillStyle = '#ffd166'
     g.font = '30px sans-serif'
     g.fillText(`${stars(ending.stars)}  ·  ${rarity}`, 360, y)
-    y += 54
+    y += 56
     // 鉴定评语
     g.fillStyle = '#aab7c9'
     g.font = '26px sans-serif'
-    y = wrapText(g, v.verdict, 360, y, 600, 40) + 40
+    y = wrapText(g, v.verdict, 360, y, 600, 40) + 50
 
     // ===== 分隔 + 本局感情线(次要) =====
     g.strokeStyle = 'rgba(255,255,255,.14)'
+    g.lineWidth = 1
     g.beginPath()
     g.moveTo(80, y)
     g.lineTo(640, y)
     g.stroke()
-    y += 44
+    y += 46
     g.fillStyle = '#5b6b80'
     g.font = '22px sans-serif'
     g.fillText(`— 本局感情线 · ${rs.label} —`, 360, y)
-    y += 46
+    y += 50
     g.fillStyle = '#e8ecf3'
     g.font = 'bold 32px sans-serif'
-    y = wrapText(g, ending.title, 360, y, 600, 40) + 12
+    y = wrapText(g, ending.title, 360, y, 600, 42) + 46 // 修复:标题与徽章间距,不再重叠
     g.fillStyle = '#c084fc'
     g.font = '25px sans-serif'
     g.fillText(`🏅 ${ending.badge}`, 360, y)
-    y += 52
+    y += 56
 
     // ===== 数据墙 =====
     g.fillStyle = '#93a1b5'
@@ -122,30 +123,40 @@ export function EndingCard({ ending, state, npcName, detail, newAchievements, on
       y,
     )
     if (ending.secretCode) {
-      y += 44
+      y += 46
       g.fillStyle = '#c084fc'
       g.font = 'bold 28px sans-serif'
       g.fillText(`暗号:${ending.secretCode}`, 360, y)
     }
 
-    // ===== 二维码(扫码即玩) =====
+    // ===== 二维码(紧跟正文,不再固定在底部) =====
     const qr = document.createElement('canvas')
     await QRCode.toCanvas(qr, shareUrl(), {
       width: 168,
       margin: 1,
       color: { dark: '#1b1030', light: '#ffffff' },
     })
-    const qx = 360 - 92
-    const qy = 1120
+    const qsize = 184
+    const qx = 360 - qsize / 2
+    const qy = y + 36
     g.fillStyle = '#ffffff'
-    roundRect(g, qx, qy, 184, 184, 16)
+    roundRect(g, qx, qy, qsize, qsize, 16)
     g.fill()
     g.drawImage(qr, qx + 8, qy + 8, 168, 168)
     g.fillStyle = '#e8ecf3'
     g.font = 'bold 25px sans-serif'
-    g.fillText('📱 扫码进入游戏,来北京Dating', 360, 1336)
+    g.fillText('📱 扫码进入游戏,来北京Dating', 360, qy + qsize + 46)
+    g.fillStyle = '#5b6b80'
+    g.font = '19px sans-serif'
+    g.fillText('《北京Dating模拟器》· 一款人均社死的恋爱冒险', 360, qy + qsize + 78)
 
-    return c
+    // ===== 按实际内容裁切 =====
+    const finalH = qy + qsize + 78 + 34
+    const out = document.createElement('canvas')
+    out.width = W
+    out.height = finalH
+    out.getContext('2d')!.drawImage(c, 0, 0)
+    return out
   }
 
   async function openPreview() {
