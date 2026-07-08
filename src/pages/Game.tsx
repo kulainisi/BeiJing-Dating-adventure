@@ -177,7 +177,7 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
       const reason = s.npcs[f.npcId].blockReason
       if (reason) addDeath(reason)
     }
-    if (faded.length > 0) showToast('🕊️ 有人被你晾太久,收拾行李离开了北京。')
+    if (faded.length > 0) showToast('💔 有人被你晾太久,默默把你删了好友。')
     announceMatch(r.decay.find((d) => d.kind === 'match')?.npcId, faded.length > 0 ? 2400 : 400)
     if (checkAllBlocked(s)) return endGame('all_blocked')
     if (faded.length === 0) showToast(`😴 新的一天。房租和生活费扣了 ¥${r.cost}。`)

@@ -282,7 +282,7 @@ export function dailyDecay(s: GameState): DecayNews[] {
       if (npc.favor <= 0) {
         npc.favor = 0
         npc.stage = 'faded'
-        npc.blockReason = '被你晾了太久。TA说卷不动了,收拾行李离开了北京'
+        npc.blockReason = '你太久没回消息,TA默默把你删了好友。在北京,已读不回久了,就成了删除键'
         bumpMood(s, -8)
         news.push({ npcId: npc.id, kind: 'faded' })
         const nm = refillPool(s)
