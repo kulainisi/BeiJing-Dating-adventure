@@ -446,6 +446,193 @@ const EVENTS: RandomEventDef[] = [
       return sc
     },
   },
+  // 🚲 共享单车找车大战
+  {
+    id: 'bike_hunt',
+    eligible: (s) => s.day >= 2,
+    weight: () => 6,
+    build: () =>
+      eventScript('ev_bike', '找车大战', 'sport', [
+        node('a', [
+          nar('下班,App 显示楼下有三辆共享单车。走过去一看:一辆没座,一辆锁不上,最后一辆二维码被小广告贴得严严实实。'),
+          nar('北京的通勤,从不缺行为艺术。'),
+        ], {
+          choices: [
+            { text: '认命骑那辆没座的,全程半蹲马步', effects: { awkward: 3 }, goto: 'b1' },
+            { text: '果断打车,时间就是命,能用钱解决的都不叫事', effects: { wallet: -28 }, goto: 'b2' },
+          ],
+        }),
+        node('b1', [nar('你以马步之姿骑过三个路口,大腿在燃烧,但省下了打车钱。北漂的核心竞争力:能屈能伸。')], { end: true }),
+        node('b2', [nar('车里空调很足,你靠在后座,决定这钱花得值。偶尔对自己好一点,也是刚需。')], { end: true }),
+      ]),
+  },
+  // 💼 裁员传闻
+  {
+    id: 'layoff_rumor',
+    once: true,
+    eligible: (s) => s.day >= 4,
+    weight: () => 6,
+    build: () =>
+      eventScript('ev_layoff', '裁员传闻', 'shop', [
+        node('a', [
+          nar('午休,空气突然凝固:隔壁组一夜之间少了两个人,工位收拾得干干净净。群里没人说话,但每个人都在偷偷刷 Boss 直聘。'),
+          nar('HR 端着咖啡从你身后走过,笑了一下。'),
+        ], {
+          choices: [
+            { text: '连夜更新简历、整理作品集,手里有粮心里不慌', effects: { awkward: -6 }, goto: 'b1' },
+            { text: '假装无事发生,该摸鱼摸鱼——慌也没用,不如快乐', effects: { awkward: 4 }, goto: 'b2' },
+          ],
+        }),
+        node('b1', [nar('简历投出去三份,当晚就有两个 HR 约面。安全感这东西,得自己给自己发。')], { end: true }),
+        node('b2', [nar('你点了杯奶茶压惊,决定活在当下。真裁到你,慌半个月也改变不了结果。')], { end: true }),
+      ]),
+  },
+  // 🏮 相亲角惊魂
+  {
+    id: 'xiangqin_corner',
+    once: true,
+    eligible: (s) => s.day >= 3,
+    weight: () => 5,
+    build: () =>
+      eventScript('ev_xqj', '相亲角惊魂', 'walk', [
+        node('a', [
+          nar('周末路过中山公园,误入相亲角。你的信息还没挂,大爷大妈的目光已经把你从头到脚扫描了三遍。'),
+          npc('「哪儿的人啊?有房吗?属什么的?独生子女不?」'),
+        ], {
+          choices: [
+            { text: '落荒而逃,这里的信息密度比我的年薪还高', effects: { awkward: 6 }, goto: 'b1' },
+            { text: '反向围观:把这儿当成大型人类学田野调查', effects: { awkward: -4 }, goto: 'b2' },
+          ],
+        }),
+        node('b1', [nar('你百米冲刺逃离,身后传来一句精准点评:「跑那么快,心里没底吧。」')], { end: true }),
+        node('b2', [nar('你蹲了半小时,听完「属羊不好」「一米七以下不看」的完整体系,回去路上觉得自己单身得很有道理。')], { end: true }),
+      ]),
+  },
+  // 🩺 体检报告焦虑
+  {
+    id: 'health_check',
+    eligible: (s) => aliveNpcs(s, 20).length >= 1,
+    weight: () => 8,
+    build: (s) => {
+      const target = pick(aliveNpcs(s, 20))
+      const tn = nameOf(s, target.id)
+      const sc = eventScript('ev_tijian', '体检报告', 'dinner', [
+        node('a', [
+          nar(`${tn}发来一张体检报告的照片,几个指标标着刺眼的箭头。`),
+          npc('「甲状腺结节,还有点脂肪肝……我是不是要凉了。」'),
+        ], {
+          choices: [
+            { text: '查资料+安慰:结节大多良性,别自己吓自己,复查我陪你去', effects: { favor: 11, care: true }, danmaku: ['#simp'], goto: 'b1' },
+            { text: '回:多喝热水,早点睡就好了', effects: { favor: -4, saying: 'water' }, goto: 'b2' },
+            { text: '回:哈哈你这报告比我的还花', effects: { favor: -3, saying: 'hhh' }, goto: 'b3' },
+          ],
+        }),
+        node('b1', [npc('「……你怎么比我还上心。」'), npc('「行,复查那天,你可得真来。」')], { end: true }),
+        node('b2', [npc('「热水治不了结节。」'), nar('关心的窗口,被一句万能回复轻轻关上了。')], { end: true }),
+        node('b3', [npc('「……我在担心,你在玩梗。」')], { end: true }),
+      ])
+      sc.npcId = target.id
+      return sc
+    },
+  },
+  // 🛒 双十一埋伏
+  {
+    id: 'double11',
+    once: true,
+    eligible: (s) => s.wallet > 1500,
+    weight: () => 5,
+    build: () =>
+      eventScript('ev_1111', '购物节埋伏', 'shop', [
+        node('a', [
+          nar('购物节的满减像一道奥数题:凑单、跨店、预售、尾款。你的购物车里躺着一堆「不买就亏」。'),
+          sys('手指悬在「立即支付」上方。'),
+        ], {
+          choices: [
+            { text: '清空购物车,只留真正要用的,理智消费', effects: { awkward: -5 }, goto: 'b1' },
+            { text: '全部拿下!快乐无价(账单有价)', effects: { wallet: -720 }, goto: 'b2' },
+          ],
+        }),
+        node('b1', [nar('你退出了 App,泡了杯茶。省下的钱,是你和北京房租对抗的弹药。')], { end: true }),
+        node('b2', [nar('付款的三秒是快乐的,之后半个月你都在收快递、拆快递、和退货客服斗智斗勇。')], { end: true }),
+      ]),
+  },
+  // 🌧️ 暴雨围城
+  {
+    id: 'rain_metro',
+    eligible: (s) => aliveNpcs(s, 25).length >= 1 && s.day >= 3,
+    weight: () => 8,
+    build: (s) => {
+      const target = pick(aliveNpcs(s, 25))
+      const tn = nameOf(s, target.id)
+      const sc = eventScript('ev_rain', '暴雨围城', 'walk', [
+        node('a', [
+          nar(`晚高峰,北京下起瓢泼大雨,地铁口挤满了不敢冲进雨里的人。手机响了,是${tn}。`),
+          npc('「你还在公司吗?我这边雨大到打不到车……你带伞了吗?」'),
+        ], {
+          choices: [
+            { text: '回:我在你附近,别动,我打把伞过去接你', effects: { favor: 13, care: true }, danmaku: ['#simp'], goto: 'b1' },
+            { text: '回:我也困着呢,要不视频陪你等雨停?', effects: { favor: 8 }, goto: 'b2' },
+            { text: '回:自己想办法吧,这雨谁也没辙', effects: { favor: -6 }, goto: 'b3' },
+          ],
+        }),
+        node('b1', [npc('「你真的来了……」'), nar('一把伞下两个人,雨点砸在伞面上噼啪响,肩膀不得不靠得很近。这场雨,后来被你们提起了很多次。')], { end: true }),
+        node('b2', [npc('「哈哈好,那你陪我等。」'), nar('视频里,两个人看着各自窗外的同一场雨,聊到雨停。')], { end: true }),
+        node('b3', [npc('「……也是哈。」'), nar('对话框安静了。有些时刻,不需要你淋雨,只需要你在。')], { end: true }),
+      ])
+      sc.npcId = target.id
+      return sc
+    },
+  },
+  // 🎓 同学群诈尸
+  {
+    id: 'classmate_group',
+    once: true,
+    eligible: (s) => s.day >= 5,
+    weight: () => 5,
+    build: () =>
+      eventScript('ev_group', '同学群诈尸', 'dinner', [
+        node('a', [
+          nar('沉寂半年的高中同学群突然热闹:有人晒二胎,有人晒喜提保时捷,有人 @全体「老家买房了,欢迎回来发展」。'),
+          npc('(班长)「在北京的都还好吧?混得咋样?」'),
+        ], {
+          choices: [
+            { text: '发个「都挺好」配张北京日落,体面收场', effects: { awkward: -4 }, goto: 'b1' },
+            { text: '默默退出群聊,清净了', effects: { awkward: -8 }, goto: 'b2' },
+            { text: '实话实说:房租五千,存款五位数,快乐无价', effects: { awkward: 5 }, goto: 'b3' },
+          ],
+        }),
+        node('b1', [nar('你没赢,但也没输。成年人的社交,重点是全身而退。')], { end: true }),
+        node('b2', [nar('退群那一瞬,你感到久违的轻松。人生不是 KPI,不用向谁汇报进度。')], { end: true }),
+        node('b3', [npc('(班长)「……哈哈,真实。」'), nar('群里安静了几秒,然后有人偷偷私信你:「其实我也一样。」')], { end: true }),
+      ]),
+  },
+  // 🔪 砍一刀
+  {
+    id: 'pdd_cut',
+    once: true,
+    eligible: (s) => aliveNpcs(s, 15).length >= 1,
+    weight: () => 6,
+    build: (s) => {
+      const target = pick(aliveNpcs(s, 15))
+      const tn = nameOf(s, target.id)
+      const sc = eventScript('ev_pdd', '砍一刀', 'shop', [
+        node('a', [
+          nar(`${tn}发来一个链接:「帮我砍一刀!就差最后 0.01% 了!三年了,真的就差你这一刀!」`),
+        ], {
+          choices: [
+            { text: '二话不说点进去砍了,顺便调侃:你这一刀我砍了三年', effects: { favor: 7 }, goto: 'b1' },
+            { text: '回:这玩意儿砍到天荒地老,我直接给你转 20 块', effects: { wallet: -20, favor: 9, care: true }, goto: 'b2' },
+            { text: '装死不点,这种链接一点就没完', effects: { favor: -3 }, goto: 'b3' },
+          ],
+        }),
+        node('b1', [npc('「+0.00001%!但我记住你了,砍一刀之交也是交情。」')], { end: true }),
+        node('b2', [npc('「?!别别别,我逗你玩的……」'), npc('「……行吧,这 20 块记账上,下次请你吃饭。」')], { end: true }),
+        node('b3', [nar('你已读没点。对方发来一个「……」。有些友谊,就断在这一刀上。')], { end: true }),
+      ])
+      sc.npcId = target.id
+      return sc
+    },
+  },
 ]
 
 // 🏠 同居邀请(共有事件):确立关系+高好感后,低概率触发

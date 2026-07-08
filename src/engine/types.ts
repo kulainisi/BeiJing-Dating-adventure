@@ -360,6 +360,8 @@ export interface GameState {
   pendingEvent?: string
   /** 共有池(generic/spicy/interlude)整局全局已用脚本 id,保证每条只出现一次 */
   usedShared: string[]
+  /** 最近抽到的事件 id(最多 3 个),用于防止随机事件连刷同一个 */
+  recentEvents: string[]
 }
 
 // ============ 结局 ============

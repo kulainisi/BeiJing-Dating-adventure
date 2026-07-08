@@ -107,6 +107,7 @@ export function newGame(version: Version, edu: EduId, seed?: number): GameState 
     eventDone: [],
     luckyDay: false,
     usedShared: [],
+    recentEvents: [],
   }
 }
 
@@ -152,17 +153,22 @@ export function sleep(s: GameState): SleepResult {
       if (chance(0.35)) npc.unread = true
     }
   }
-  // 抽随机事件
+  // 抽随机事件(近 3 个不复现,防连刷)
   let eventId: string | undefined
+  s.recentEvents ??= [] // 兼容老存档
   if (chance(0.6)) {
     const pool = getEvents(s.version).filter(
-      (e) => e.eligible(s) && !(e.once && s.eventDone.includes(e.id)),
+      (e) =>
+        e.eligible(s) &&
+        !(e.once && s.eventDone.includes(e.id)) &&
+        !s.recentEvents.includes(e.id),
     )
     const ev = weighted(pool, (e) => e.weight(s))
     if (ev) {
       eventId = ev.id
       s.eventDone.push(ev.id)
       s.pendingEvent = ev.id
+      s.recentEvents = [...s.recentEvents, ev.id].slice(-3)
     }
   }
   return { cost, bankrupt: false, decay, eventId, gameOver: false }
