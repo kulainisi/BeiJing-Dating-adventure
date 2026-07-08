@@ -15,7 +15,7 @@ export type TemplateId =
   | 'jubensha'
   | 'park'
 export type OriginId = 'normal' | 'rich' | 'energetic'
-export type EduId = 'gaozhi' | 'putong' | 'tiyu'
+export type EduId = 'gaozhi' | 'putong' | 'tiyu' | 'mingyuan'
 
 /** 检定属性的展示名(暗骰原则下仅用于置灰理由等文案) */
 export const SKILL_DISPLAY: Record<SkillId, { name: string; emoji: string }> = {
@@ -27,7 +27,7 @@ export const SKILL_DISPLAY: Record<SkillId, { name: string; emoji: string }> = {
   money: { name: '钞能力', emoji: '💰' },
 }
 
-// ============ 开局:文化三档 ============
+// ============ 开局:文化三档(第三档按版本:男版体育生 / 女版名媛) ============
 export interface EduTier {
   id: EduId
   name: string
@@ -38,43 +38,65 @@ export interface EduTier {
   walletMod: number
   liquorMod: number
   sleepAwkBonus: number
+  /** 开局对所有 NPC 初始好感的加成(名媛的社交光环) */
+  favorMod?: number
 }
 
-export const EDU_TIERS: EduTier[] = [
-  {
-    id: 'gaozhi',
-    name: '高知',
-    emoji: '🎓',
-    culture: 7,
-    desc: '文化水平 7 · 月薪x1.3(名校溢价) · 存款 -2000(读书读的)',
-    salaryMul: 1.3,
-    walletMod: -2000,
-    liquorMod: 0,
-    sleepAwkBonus: 0,
-  },
-  {
-    id: 'putong',
-    name: '普通青年',
-    emoji: '📖',
-    culture: 5,
-    desc: '文化水平 5 · 无修正,主打一个平凡',
-    salaryMul: 1,
-    walletMod: 0,
-    liquorMod: 0,
-    sleepAwkBonus: 0,
-  },
-  {
-    id: 'tiyu',
-    name: '体育生',
-    emoji: '🏀',
-    culture: 3,
-    desc: '文化水平 3 · 存款 +1000 · 酒量天赋异禀 · 睡一觉啥尴尬都忘了',
-    salaryMul: 1,
-    walletMod: 1000,
-    liquorMod: 2,
-    sleepAwkBonus: 10,
-  },
-]
+const GAOZHI: EduTier = {
+  id: 'gaozhi',
+  name: '高知',
+  emoji: '🎓',
+  culture: 7,
+  desc: '文化水平 7 · 月薪x1.3(名校溢价) · 存款 -2000(读书读的)',
+  salaryMul: 1.3,
+  walletMod: -2000,
+  liquorMod: 0,
+  sleepAwkBonus: 0,
+}
+const PUTONG: EduTier = {
+  id: 'putong',
+  name: '普通青年',
+  emoji: '📖',
+  culture: 5,
+  desc: '文化水平 5 · 无修正,主打一个平凡',
+  salaryMul: 1,
+  walletMod: 0,
+  liquorMod: 0,
+  sleepAwkBonus: 0,
+}
+const TIYU: EduTier = {
+  id: 'tiyu',
+  name: '体育生',
+  emoji: '🏀',
+  culture: 3,
+  desc: '文化水平 3 · 存款 +1000 · 酒量天赋异禀 · 睡一觉啥尴尬都忘了',
+  salaryMul: 1,
+  walletMod: 1000,
+  liquorMod: 2,
+  sleepAwkBonus: 10,
+}
+const MINGYUAN: EduTier = {
+  id: 'mingyuan',
+  name: '名媛',
+  emoji: '👑',
+  culture: 5,
+  desc: '文化水平 5 · 会来事,开局自带社交好感;排面看家底',
+  salaryMul: 1,
+  walletMod: 0,
+  liquorMod: 0,
+  sleepAwkBonus: 0,
+  favorMod: 8,
+}
+
+/** 文化三档按版本给:男版第三档体育生 / 女版第三档名媛 */
+export function getEduTiers(version: Version): EduTier[] {
+  return [GAOZHI, PUTONG, version === 'female' ? MINGYUAN : TIYU]
+}
+
+/** 按 id 查档(跨版本,供引擎结算/存档回读) */
+export function findEduTier(id: EduId): EduTier {
+  return [GAOZHI, PUTONG, TIYU, MINGYUAN].find((t) => t.id === id) ?? PUTONG
+}
 
 // ============ 开局:投胎骰(隐藏预设,抽中才揭晓) ============
 export interface Origin {

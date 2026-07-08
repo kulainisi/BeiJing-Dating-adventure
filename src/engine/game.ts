@@ -5,16 +5,15 @@ import {
   CharacterProfile,
   DateSpot,
   DAILY_FOOD,
-  EDU_TIERS,
   EduId,
   ENERGY_COST,
+  findEduTier,
   GameState,
   Line,
   NodeDef,
   NpcState,
   OpinionQ,
   ORIGINS,
-  parallelCap,
   Script,
   TOTAL_DAYS,
   Version,
@@ -34,7 +33,7 @@ import { getUnlockedCodes } from './save'
 export function newGame(version: Version, edu: EduId, seed?: number): GameState {
   const s0 = seed ?? (Date.now() % 2147483647)
   seedRng(s0)
-  const eduT = EDU_TIERS.find((e) => e.id === edu) ?? EDU_TIERS[1]
+  const eduT = findEduTier(edu)
   const origin = weighted(ORIGINS, (o) => o.weight)!
 
   const wallet = Math.max(1000, origin.wallet + eduT.walletMod)
@@ -48,7 +47,7 @@ export function newGame(version: Version, edu: EduId, seed?: number): GameState 
     npcs[c.id] = {
       id: c.id,
       stage: 'locked',
-      favor: 12,
+      favor: 12 + (eduT.favorMod ?? 0), // 名媛社交光环:开局好感更高
       mood: rollMood(),
       topicIdx: 0,
       usedOpinions: [],
@@ -63,14 +62,7 @@ export function newGame(version: Version, edu: EduId, seed?: number): GameState 
       unread: false,
     }
   }
-  // 按并聊上限随机解锁开局对象
-  const cap = parallelCap(origin.energy)
-  const ids = Object.keys(npcs)
-  for (let i = 0; i < cap && ids.length > 0; i++) {
-    const id = ids.splice(Math.floor(rand() * ids.length), 1)[0]
-    npcs[id].stage = 'chatting'
-    npcs[id].unread = true
-  }
+  // 开局对象由玩家在选人页手动挑选(Home 里把选中的置为 chatting);此处全员保持 locked
 
   return {
     version,
@@ -137,7 +129,7 @@ export interface SleepResult {
 }
 
 export function sleep(s: GameState): SleepResult {
-  const eduT = EDU_TIERS.find((e) => e.id === s.edu)!
+  const eduT = findEduTier(s.edu)
   const cost = Math.round(s.rent / 30) + DAILY_FOOD
   const bankrupt = chargeWallet(s, cost)
 

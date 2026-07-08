@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
-import { EDU_TIERS, EduId, GameState, ORIGINS, parallelCap, Version } from '@/engine/types'
+import { EduId, findEduTier, GameState, getEduTiers, ORIGINS, parallelCap, Version } from '@/engine/types'
 import { newGame } from '@/engine/game'
+import { getCharacters } from '@/content'
 import { loadRun } from '@/engine/save'
 
 export function Home({
@@ -13,12 +14,86 @@ export function Home({
   const [version, setVersion] = useState<Version | null>(null)
   const [edu, setEdu] = useState<EduId>('putong')
   const [pending, setPending] = useState<GameState | null>(null)
+  const [picking, setPicking] = useState(false)
+  const [picks, setPicks] = useState<string[]>([])
   const saved = useMemo(() => loadRun(), [])
+
+  // ============ 开局选人页(从全部 12 人里自选,≤并聊上限) ============
+  if (picking && pending) {
+    const chars = getCharacters(pending.version)
+    const cap = parallelCap(pending.maxEnergy)
+    const toggle = (id: string) =>
+      setPicks((p) => (p.includes(id) ? p.filter((x) => x !== id) : p.length < cap ? [...p, id] : p))
+    const confirm = () => {
+      for (const id of picks) {
+        pending.npcs[id].stage = 'chatting'
+        pending.npcs[id].unread = true
+      }
+      onStart(pending)
+    }
+    return (
+      <div className="fade-in" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ padding: '12px 16px 4px', flexShrink: 0 }}>
+          <button className="btn ghost" style={{ width: 'auto', padding: '2px 0', fontSize: 14 }} onClick={() => setPicking(false)}>
+            ← 返回
+          </button>
+          <h2 style={{ fontSize: 19, fontWeight: 900, marginTop: 2 }}>
+            先聊谁?(已选 {picks.length}/{cap})
+          </h2>
+          <p style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 4, lineHeight: 1.7 }}>
+            这一池人都在。精力只够同时聊 {cap} 个,先挑最想聊的。其余人日后腾出名额可再解锁。
+          </p>
+        </div>
+        <div className="scroll" style={{ padding: '8px 16px', minHeight: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+            {chars.map((c) => {
+              const on = picks.includes(c.id)
+              const full = !on && picks.length >= cap
+              return (
+                <button
+                  key={c.id}
+                  className="npc-card"
+                  disabled={full}
+                  style={{
+                    borderColor: on ? c.color : undefined,
+                    background: on ? `${c.color}18` : undefined,
+                    opacity: full ? 0.4 : 1,
+                  }}
+                  onClick={() => toggle(c.id)}
+                >
+                  <div className="big-avatar" style={{ background: `${c.color}33`, border: `1.5px solid ${c.color}66` }}>
+                    {c.emoji}
+                  </div>
+                  <div className="info">
+                    <div className="name">{c.name}</div>
+                    <div className="sub" style={{ whiteSpace: 'normal' }}>
+                      {c.bio}
+                    </div>
+                  </div>
+                  {on && <span style={{ color: c.color, fontWeight: 800 }}>✓</span>}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        <div style={{ padding: '8px 16px calc(12px + var(--safe-bottom))', flexShrink: 0, borderTop: '1px solid var(--line)' }}>
+          <button
+            className="btn primary"
+            disabled={picks.length === 0}
+            style={picks.length === 0 ? { opacity: 0.5 } : undefined}
+            onClick={confirm}
+          >
+            {picks.length === 0 ? '至少选一个人开聊' : `就聊这 ${picks.length} 个,开始 →`}
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   // ============ 投胎揭晓页 ============
   if (pending) {
     const origin = ORIGINS.find((o) => o.id === pending.origin)!
-    const eduT = EDU_TIERS.find((e) => e.id === pending.edu)!
+    const eduT = findEduTier(pending.edu)
     return (
       <div className="fade-in" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div className="scroll" style={{ padding: '10vh 22px 16px' }}>
@@ -42,8 +117,8 @@ export function Home({
           </div>
         </div>
         <div style={{ padding: '8px 16px calc(12px + var(--safe-bottom))', flexShrink: 0 }}>
-          <button className="btn primary" onClick={() => onStart(pending)}>
-            🚀 就这命了,开始这14天
+          <button className="btn primary" onClick={() => setPicking(true)}>
+            🚀 就这命了,去挑人开聊
           </button>
         </div>
       </div>
@@ -72,10 +147,22 @@ export function Home({
               ▶️ 继续上一局(第{saved.day}天 · {saved.version === 'male' ? '男版' : '女版'})
             </button>
           )}
-          <button className="btn" onClick={() => setVersion('male')}>
+          <button
+            className="btn"
+            onClick={() => {
+              setEdu('putong')
+              setVersion('male')
+            }}
+          >
             🕹️ 男版开局 <span style={{ color: 'var(--text-faint)', fontSize: 12 }}>攻略她们</span>
           </button>
-          <button className="btn" onClick={() => setVersion('female')}>
+          <button
+            className="btn"
+            onClick={() => {
+              setEdu('putong')
+              setVersion('female')
+            }}
+          >
             🕹️ 女版开局 <span style={{ color: 'var(--text-faint)', fontSize: 12 }}>攻略他们</span>
           </button>
           <button className="btn ghost" onClick={onGallery}>
@@ -106,7 +193,7 @@ export function Home({
 
       <div className="scroll" style={{ padding: '10px 16px', minHeight: 0 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-          {EDU_TIERS.map((t) => (
+          {getEduTiers(version).map((t) => (
             <button
               key={t.id}
               className="npc-card"
@@ -139,7 +226,14 @@ export function Home({
       </div>
 
       <div style={{ padding: '8px 16px calc(12px + var(--safe-bottom))', flexShrink: 0, borderTop: '1px solid var(--line)' }}>
-        <button className="btn primary" onClick={() => setPending(newGame(version, edu))}>
+        <button
+          className="btn primary"
+          onClick={() => {
+            setPicks([])
+            setPicking(false)
+            setPending(newGame(version, edu))
+          }}
+        >
           🎲 掷投胎骰({version === 'male' ? '男版' : '女版'})
         </button>
       </div>

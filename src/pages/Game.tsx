@@ -539,7 +539,16 @@ function NpcList({
         {mode === 'chat' ? '💬 找谁聊?' : '📍 约谁出来?'}
       </h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-        {chars.map((c) => {
+        {[...chars]
+          .sort((a, b) => {
+            // 在聊的人置顶,其次锁定(待解锁),最后已失联
+            const rk = (id: string) => {
+              const n = s.npcs[id]
+              return isAlive(n) ? 0 : n.stage === 'locked' ? 1 : 2
+            }
+            return rk(a.id) - rk(b.id)
+          })
+          .map((c) => {
           const n = s.npcs[c.id]
           if (n.stage === 'locked') {
             return (
