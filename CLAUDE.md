@@ -32,6 +32,16 @@ npm run check-story  # ★ 内容校验:任何剧情改动后必跑,抓断头节
 - 说话风格博弈(v4.1):Effects.style('frame'/'flatter')选项 vs NPC stylePref(v4.ts STYLE_PREFS,
   24人:吃框架9/吃谄媚10/两不吃5)——对上+4,对错-3,被动契合正向+1;风格选项用
   showIf:'edu:gaozhi'/'edu:shehui' 门控(已铺:看法题aa/xingzuo、闲聊g_waimai、饭局talk);
+- 金钱观(v4.2):NPC moneyView('love'吃排场/'hate'反感烧钱,v4.ts MONEY_VIEWS 17人)——
+  buildDateSession 按 spot.price 开场定调(≥1200:love+6/hate-7;≤100:hate+4/love-5,带旁白);
+  超豪华场地 DateSpot.minWallet(置灰门槛,钞能力=固定 ¥99999999 天然全开);
+- 投胎骰 6 档(v4.2):普通73/钞能力8(9千9百万+有房)/高精力8/老北京er5(有房+3万+人脉favor+4)/
+  海归3(文化+1薪x1.2)/拆迁户3(有房+60万);Origin 可带 cultureMod/salaryMul/favorMod/liquorMod;
+- 恋爱后内容(v4.2):确立后 ping 优先走 content/couple.ts 情侣池(吵架和好/见死党/纪念日/家宴/
+  TA妈视频/深夜奔赴,cp_* npcFlags 每人每事件一次)+吃醋保卫战事件(ex_return/rival_suitor)
+  +6 个 cp_* 驱动的恋爱后成就;
+- ⚠️ SessionView 竞态红线:tap() 里判断「有没有选项」必须用同步 ref 语义(hasVisibleChoices),
+  绝不能依赖 state revealed——否则手机连点会误 setFinished 把选项锁死(v4.2 已修+三重自愈);
   上班=doWork 按职业从 content/work.ts 抽加权事件,**有赚有赔**并动 mood;
   精力决定并聊上限1-4人,开局从全部12人自选;**钱归零任何时刻立即败北**
 - 属性映射(内容层检定 id 不变,引擎解析):mouth/mind/culture→文化水平;image→排面

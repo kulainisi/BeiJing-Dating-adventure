@@ -35,7 +35,7 @@ import { performCheck } from '@/engine/checks'
 import { pick, seedRng } from '@/engine/rng'
 import { addDeath, addRun, clearRun, saveRun, unlockAchievements, unlockEnding } from '@/engine/save'
 import { ACHIEVEMENTS, Achievement, evalAchievements, evalMidRun } from '@/engine/achievements'
-import { buildPing, findEnding, findEvent, getCharacter, getCharacters, resolveDanmaku } from '@/content'
+import { buildCouplePing, buildPing, findEnding, findEvent, getCharacter, getCharacters, resolveDanmaku } from '@/content'
 import { trackEnding, trackPlay } from '@/analytics'
 import { DanmakuLayer, DanmakuItem } from '@/components/Danmaku'
 import { Celebration } from '@/components/Celebration'
@@ -224,11 +224,12 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
         return
       }
     }
-    // 有人主动来找你:必须处理(对话里自带「已读不回」的冷暴力选项)
+    // 有人主动来找你:必须处理(对话里自带「已读不回」的冷暴力选项);官方对象走情侣专属池
     if (r.pingNpcId && isAlive(s.npcs[r.pingNpcId])) {
       const profile = getCharacter(s.version, r.pingNpcId)
+      const npcSt = s.npcs[r.pingNpcId]
       touchNpc(s, r.pingNpcId)
-      const sc = buildPing(s.npcs[r.pingNpcId], profile)
+      const sc = npcSt.stage === 'confirmed' ? buildCouplePing(npcSt, profile) : buildPing(npcSt, profile)
       saveRun(s)
       setPhase({ t: 'session', sess: { script: sc, npcId: r.pingNpcId, type: 'event' } })
       force()
@@ -807,15 +808,21 @@ function SpotPick({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
         {profile.dateSpots.map((spot, i) => {
           const bg = SCENE_BG[spot.template === 'citywalk' ? 'walk' : spot.template === 'shopping' ? 'shop' : spot.template]
-          const cant = s.wallet - spot.price <= 0
+          const lockedLux = spot.minWallet !== undefined && s.wallet < spot.minWallet
+          const cant = lockedLux || s.wallet - spot.price <= 0
           return (
             <button key={i} className="npc-card" disabled={cant} onClick={() => onPick(i)} style={{ opacity: cant ? 0.45 : 1 }}>
               <div className="big-avatar" style={{ background: bg.grad }}>
-                {bg.emoji}
+                {spot.minWallet ? '💎' : bg.emoji}
               </div>
               <div className="info">
                 <div className="name">{spot.label}</div>
-                <div className="sub">📍 {spot.location}</div>
+                <div className="sub">
+                  📍 {spot.location}
+                  {lockedLux && (
+                    <span style={{ color: 'var(--accent2)' }}> · 💎 存款≥¥{spot.minWallet!.toLocaleString()} 解锁</span>
+                  )}
+                </div>
               </div>
               <div style={{ fontSize: 14, fontWeight: 800, color: cant ? 'var(--red)' : 'var(--accent2)' }}>
                 ¥{spot.price}
@@ -939,9 +946,11 @@ function SessionView({
       }
       return
     }
-    // 所有行已展示
-    const visibleChoices = getVisibleChoices()
-    if (visibleChoices.length > 0) return
+    // 所有行已展示。
+    // 注意:这里绝不能依赖异步 state(revealed)判断「有没有选项」——手机连点跳文字时,
+    // state 可能落后于 revealRef,误判成无选项而走 setFinished,把选项永久锁死(卡死 bug)。
+    // 用节点自身的选项做同步(ref 语义)判断。
+    if (hasVisibleChoices()) return
     if (syntheticEnd.current || node.end) {
       setFinished(true)
       return
@@ -963,18 +972,29 @@ function SessionView({
     setRevealed(0)
   }
 
+  function choicePass(c: ChoiceDef): boolean {
+    const has = (f: string) => s.flags.includes(f) || (npc?.flags.includes(f) ?? false)
+    if (c.showIf && !has(c.showIf)) return false
+    if (c.hideIf && has(c.hideIf)) return false
+    return true
+  }
+
+  /** 同步判断当前节点是否还有可见选项(不依赖 revealed state,防连点竞态) */
+  function hasVisibleChoices(): boolean {
+    return !syntheticEnd.current && !!node?.choices && node.choices.some((c) => choicePass(c))
+  }
+
   function getVisibleChoices(): ChoiceDef[] {
     if (!node?.choices || revealed < node.lines.length || syntheticEnd.current) return []
-    return node.choices.filter((c) => {
-      const has = (f: string) => s.flags.includes(f) || (npc?.flags.includes(f) ?? false)
-      if (c.showIf && !has(c.showIf)) return false
-      if (c.hideIf && has(c.hideIf)) return false
-      return true
-    })
+    return node.choices.filter((c) => choicePass(c))
   }
 
   function pickChoice(c: ChoiceDef) {
-    if (finished) return
+    if (finished) {
+      // 竞态自愈:若 finished 被误置但选项仍在,允许继续点击并撤销 finished(老的坏档也能恢复)
+      if (!hasVisibleChoices()) return
+      setFinished(false)
+    }
     if (c.require && s.skills[c.require.skill] < c.require.min) return
 
     appendLine({ who: 'me', text: c.text })
@@ -1107,7 +1127,7 @@ function SessionView({
         )}
       </div>
 
-      {finished && (
+      {finished && visibleChoices.length === 0 && (
         <div className="choices">
           <button className="btn primary" onClick={onFinish}>
             {sess.type === 'event' ? '继续 →' : '结束本次互动 →'}

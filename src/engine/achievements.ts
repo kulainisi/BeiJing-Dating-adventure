@@ -32,6 +32,21 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'big_spender', emoji: '💸', name: '散财童子', desc: '累计消费破 6000', mid: true, test: (s) => s.stats.spent >= 6000 },
   { id: 'rich_born', emoji: '💰', name: '含金汤匙', desc: '投胎抽中钞能力', mid: true, test: (s) => s.origin === 'rich' },
   { id: 'energetic_born', emoji: '⚡', name: '电量永动机', desc: '投胎抽中高精力宝宝', mid: true, test: (s) => s.origin === 'energetic' },
+  // ===== 恋爱后成就链(情侣事件 cp_* flag 驱动,局中即时) =====
+  { id: 'makeup', emoji: '🕊️', name: '初次和好', desc: '第一次吵架,把TA哄回来了', mid: true, test: (s) => someNpc(s, (n) => n.flags.includes('cp_makeup')) },
+  { id: 'guard_win', emoji: '🛡️', name: '关系保卫战', desc: '击退前任/追求者,守住了TA', mid: true, test: (s) => someNpc(s, (n) => n.flags.includes('cp_guard')) },
+  { id: 'anniv_master', emoji: '🎂', name: '纪念日大师', desc: '纪念日答对送分题', mid: true, test: (s) => someNpc(s, (n) => n.flags.includes('cp_anniv')) },
+  { id: 'met_circle', emoji: '🍻', name: '见过TA的人', desc: '通过死党/家人/家宴任一关', mid: true, test: (s) => someNpc(s, (n) => ['cp_bestie', 'cp_family', 'cp_home'].some((f) => n.flags.includes(f))) },
+  { id: 'long_love', emoji: '❤️‍🔥', name: '恋爱长跑', desc: '确立后仍把好感养到 90+', mid: true, test: (s) => someNpc(s, (n) => n.stage === 'confirmed' && n.favor >= 90) },
+  {
+    id: 'sweet_daily',
+    emoji: '💌',
+    name: '情侣日常收集家',
+    desc: '集齐 3 种恋爱小日子',
+    mid: true,
+    test: (s) =>
+      someNpc(s, (n) => ['cp_makeup', 'cp_bestie', 'cp_anniv', 'cp_home', 'cp_family', 'cp_night', 'cp_guard'].filter((f) => n.flags.includes(f)).length >= 3),
+  },
   // ===== 结算时解锁 =====
   { id: 'first_win', emoji: '🏆', name: '初次上岸', desc: '拿下任意 WIN 结局', test: (s, e) => findEnding(e || '', s.version)?.rank === 'win' },
   { id: 'true_love', emoji: '💖', name: '真爱降临', desc: '达成某人的真爱 HE', test: (_s, e) => !!e && e.startsWith('true_') },

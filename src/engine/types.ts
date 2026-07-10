@@ -17,7 +17,7 @@ export type TemplateId =
   | 'mishi'
   | 'livehouse'
   | 'wenquan'
-export type OriginId = 'normal' | 'rich' | 'energetic'
+export type OriginId = 'normal' | 'rich' | 'energetic' | 'laobj' | 'haigui' | 'chaiqian'
 export type EduId = 'gaozhi' | 'putong' | 'shehui'
 /** 说话风格:框架感(高教育)/ 谄媚会来事(社会大学);NPC 各有偏好 */
 export type StyleId = 'frame' | 'flatter'
@@ -304,7 +304,7 @@ export function findProfession(id: string | undefined): Profession {
   return [...MALE_PROFS, ...FEMALE_PROFS].find((p) => p.id === id) ?? MALE_PROFS[5]
 }
 
-// ============ 开局:投胎骰(叠加在职业之上:只管精力与家底运气) ============
+// ============ 开局:投胎骰(叠加在职业之上:管精力与家底运气,少数档还有额外体质) ============
 export interface Origin {
   id: OriginId
   name: string
@@ -315,6 +315,12 @@ export interface Origin {
   walletBonus: number
   /** 家里有房:房租归零 */
   rentFree?: boolean
+  /** 叠加在(职业+教育)文化水平上 */
+  cultureMod?: number
+  salaryMul?: number
+  /** 开局全员初始好感加成(与职业 favorMod 叠加) */
+  favorMod?: number
+  liquorMod?: number
   reveal: string
 }
 
@@ -323,7 +329,7 @@ export const ORIGINS: Origin[] = [
     id: 'normal',
     name: '普通北漂',
     emoji: '🧑‍💻',
-    weight: 84,
+    weight: 73,
     energy: 4,
     walletBonus: 0,
     reveal:
@@ -335,10 +341,10 @@ export const ORIGINS: Origin[] = [
     emoji: '💰',
     weight: 8,
     energy: 3,
-    walletBonus: 200000,
+    walletBonus: 99999999, // 实际钱包在 newGame 固定为 99999999
     rentFree: true,
     reveal:
-      '你睁开眼:三环内的房,房本上有你的名字,家里给的,卡里还躺着家里打的二十万。工作对你来说是体验生活——只是应酬太多,精力总差点意思。',
+      '你睁开眼:三环内的房,房本上有你的名字,家里给的。银行 App 上的余额是一串你数不过来的 9。工作对你来说是体验生活——只是应酬太多,精力总差点意思。',
   },
   {
     id: 'energetic',
@@ -349,6 +355,42 @@ export const ORIGINS: Origin[] = [
     walletBonus: 0,
     reveal:
       '你睁开眼:钱还是那点钱,班还是那个班。但你拥有这座城市最稀缺的资源——用不完的精力。别人下班瘫着,你还能再赴两个局。',
+  },
+  {
+    id: 'laobj',
+    name: '老北京er',
+    emoji: '🏮',
+    weight: 5,
+    energy: 4,
+    walletBonus: 30000,
+    rentFree: true,
+    favorMod: 4,
+    liquorMod: 1,
+    reveal:
+      '你睁开眼:胡同里自家的房,推窗就是槐树,楼下是你大爷的棋摊。您在这城里有的不只是房——是三代人攒下的人脉和一口地道的京腔。聊什么,您都能搭上话。',
+  },
+  {
+    id: 'haigui',
+    name: '海归',
+    emoji: '🛫',
+    weight: 3,
+    energy: 4,
+    walletBonus: -3000,
+    cultureMod: 1,
+    salaryMul: 1.2,
+    reveal:
+      '你睁开眼:一箱行李,两个学位,时差还没倒过来。留学把家里的钱花得差不多了,但带回来的学历让 HR 愿意多给你两成——现在,该把学费挣回来了。',
+  },
+  {
+    id: 'chaiqian',
+    name: '拆迁户',
+    emoji: '🧧',
+    weight: 3,
+    energy: 4,
+    walletBonus: 600000,
+    rentFree: true,
+    reveal:
+      '你睁开眼:回迁房的新床垫还带着塑料膜的味道。签字那天,你家从「住户」变成了「资产」——卡里躺着六十万,楼下车库还有两个车位。班还是要上的,但腰杆硬了。',
   },
 ]
 
@@ -470,6 +512,8 @@ export interface DateSpot {
   location: string
   price: number
   label: string
+  /** 存款门槛:钱包低于此值时置灰(超豪华场地,钞能力/攒够钱才解锁) */
+  minWallet?: number
 }
 
 export interface CharacterProfile {
@@ -501,6 +545,8 @@ export interface CharacterProfile {
   opinionReacts?: { good?: string[]; bad?: string[]; meh?: string[] }
   /** 说话风格偏好:frame=吃框架逻辑,flatter=吃谄媚彩虹屁;不配=两不吃 */
   stylePref?: StyleId
+  /** 金钱观:love=吃排场(贵局加分/便宜局扣),hate=反感烧钱(贵局扣/便宜局加);不配=中立 */
+  moneyView?: 'love' | 'hate'
 }
 
 // ============ 运行时状态 ============

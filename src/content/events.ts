@@ -4,6 +4,7 @@ import { pick } from '@/engine/rng'
 import { MALE_CHARS } from './male'
 import { FEMALE_CHARS } from './female'
 import { eventScript, me, nar, node, npc, sys } from './util'
+import { GUARD_EVENTS } from './couple'
 
 function chars(v: Version) {
   return v === 'male' ? MALE_CHARS : FEMALE_CHARS
@@ -752,6 +753,9 @@ const crewDrama: RandomEventDef = {
 }
 
 EVENTS.push(crewDrama)
+
+// 🛡️ 吃醋保卫战(确立关系后:前任回头/高调追求者)
+EVENTS.push(...GUARD_EVENTS)
 
 export function getEventsFor(version: Version): RandomEventDef[] {
   return EVENTS

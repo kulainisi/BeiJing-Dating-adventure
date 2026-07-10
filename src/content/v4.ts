@@ -8,34 +8,152 @@ import { chat, nar, node, npc } from './util'
  * - EXTRA_TOPICS  :专属话题扩充(分批补,当前为第一批)
  */
 
-// ============ 新约会地点(贴人设) ============
+// ============ 新约会地点(贴人设;v4.2 每人再配 一便宜 + 一超豪华[minWallet 置灰门槛]) ============
 export const EXTRA_SPOTS: Record<string, DateSpot[]> = {
   // —— 男版(她们)——
-  linda: [{ template: 'wenquan', location: '颐堤港高端汤泉', price: 680, label: '汤泉SPA(项目暂停键)' }],
-  xiaoman: [{ template: 'livehouse', location: '鼓楼东大街小场地', price: 180, label: 'Live现场(诗与失真音墙)' }],
-  yutong: [{ template: 'livehouse', location: '五棵松Livehouse', price: 240, label: 'Live现场(她的摇滚灵魂)' }],
-  cici: [{ template: 'livehouse', location: 'MAO Livehouse', price: 220, label: 'Live现场(出片圣地Plus)' }],
-  nana: [{ template: 'wenquan', location: '小汤山温泉', price: 400, label: '温泉局(卸妆后的娜娜)' }],
-  luna: [{ template: 'livehouse', location: '糖果Livehouse', price: 260, label: '现场(她青春的BGM)' }],
-  jingjing: [{ template: 'mishi', location: '南锣鼓巷惊悚密室', price: 160, label: '密室逃脱(大妞胆大)' }],
-  linyi: [{ template: 'wenquan', location: '延庆温泉度假村', price: 520, label: '温泉(她难得的休假)' }],
-  vv: [{ template: 'livehouse', location: '通利福尼亚地下现场', price: 150, label: '地下现场(她的主场)' }],
-  beibei: [{ template: 'wenquan', location: '古北水镇温泉', price: 800, label: '温泉度假(仪式感拉满)' }],
-  coco: [{ template: 'mishi', location: '三里屯恐怖密室', price: 200, label: '恐怖密室(黑暗里的规则)' }],
-  xiaolu: [{ template: 'mishi', location: '中关村机械密室', price: 180, label: '硬核密室(主播级操作)' }],
+  linda: [
+    { template: 'wenquan', location: '颐堤港高端汤泉', price: 680, label: '汤泉SPA(项目暂停键)' },
+    { template: 'citywalk', location: '国贸桥下夜市', price: 60, label: '夜市摊(她没体验过的北京)' },
+    { template: 'dinner', location: '国贸79层米其林私享', price: 5800, label: '云端私宴(顶配排面)', minWallet: 50000 },
+  ],
+  xiaoman: [
+    { template: 'livehouse', location: '鼓楼东大街小场地', price: 180, label: 'Live现场(诗与失真音墙)' },
+    { template: 'citywalk', location: '护城河边慢走', price: 30, label: '沿河遛弯(免费的诗)' },
+    { template: 'expo', location: '私人美术馆包场夜览', price: 4800, label: '包场看展(整馆只有你们)', minWallet: 50000 },
+  ],
+  yutong: [
+    { template: 'livehouse', location: '五棵松Livehouse', price: 240, label: 'Live现场(她的摇滚灵魂)' },
+    { template: 'park', location: '景山公园看落日', price: 40, label: '景山日落(全北京在脚下)' },
+    { template: 'dinner', location: '颐和园畔国宴私厨', price: 5200, label: '国宴私厨(体制内天花板)', minWallet: 50000 },
+  ],
+  cici: [
+    { template: 'livehouse', location: 'MAO Livehouse', price: 220, label: 'Live现场(出片圣地Plus)' },
+    { template: 'citywalk', location: '早市菜市场', price: 50, label: '菜市场Citywalk(反差感选题)' },
+    { template: 'park', location: '环球影城VIP全通', price: 6800, label: '环球VIP导览(不排队的快乐)', minWallet: 50000 },
+  ],
+  nana: [
+    { template: 'wenquan', location: '小汤山温泉', price: 400, label: '温泉局(卸妆后的娜娜)' },
+    { template: 'dinner', location: '簋街大排档', price: 95, label: '簋街撸串(下半场从这开始)' },
+    { template: 'bar', location: '三里屯顶层天台包场', price: 8800, label: '天台包场(全城灯火当背景)', minWallet: 50000 },
+  ],
+  luna: [
+    { template: 'livehouse', location: '糖果Livehouse', price: 260, label: '现场(她青春的BGM)' },
+    { template: 'citywalk', location: '偶像同款打卡路线', price: 45, label: '同款路线(免费拍到饱)' },
+    { template: 'livehouse', location: '演唱会内场VIP双连座', price: 6600, label: '内场VIP(她喊到失声)', minWallet: 50000 },
+  ],
+  jingjing: [
+    { template: 'mishi', location: '南锣鼓巷惊悚密室', price: 160, label: '密室逃脱(大妞胆大)' },
+    { template: 'dinner', location: '胡同口卤煮小店', price: 55, label: '卤煮小店(她从小吃到大)' },
+    { template: 'dinner', location: '四合院私宴包场', price: 8800, label: '四合院包场(她可未必吃这套)', minWallet: 50000 },
+  ],
+  linyi: [
+    { template: 'wenquan', location: '延庆温泉度假村', price: 520, label: '温泉(她难得的休假)' },
+    { template: 'park', location: '医院后身小公园', price: 35, label: '长椅十分钟(她的碎片假期)' },
+    { template: 'wenquan', location: '温泉度假酒店疗愈套餐', price: 6200, label: '两日疗愈(给她放个真假)', minWallet: 50000 },
+  ],
+  vv: [
+    { template: 'livehouse', location: '通利福尼亚地下现场', price: 150, label: '地下现场(她的主场)' },
+    { template: 'livehouse', location: '地下开放麦', price: 40, label: '开放麦(门票随缘给)' },
+    { template: 'expo', location: '先锋艺术拍卖预展VIP', price: 5000, label: '拍卖预展(叛逆也有VIP)', minWallet: 50000 },
+  ],
+  beibei: [
+    { template: 'wenquan', location: '古北水镇温泉', price: 800, label: '温泉度假(仪式感拉满)' },
+    { template: 'citywalk', location: '朝阳公园长椅', price: 30, label: '公园谈心(零消费测试)' },
+    { template: 'shopping', location: 'SKP-S闭店私人导购', price: 26000, label: '闭店私购(她的终极幻想)', minWallet: 100000 },
+  ],
+  coco: [
+    { template: 'mishi', location: '三里屯恐怖密室', price: 200, label: '恐怖密室(黑暗里的规则)' },
+    { template: 'bar', location: '便利店门口马路牙子', price: 42, label: '便利店啤酒(城市最便宜的酒)' },
+    { template: 'bar', location: '酒店顶层威士忌吧包厢', price: 6800, label: '顶层包厢(规则由你定)', minWallet: 50000 },
+  ],
+  xiaolu: [
+    { template: 'mishi', location: '中关村机械密室', price: 180, label: '硬核密室(主播级操作)' },
+    { template: 'sport', location: '奥森夜跑', price: 30, label: '奥森夜跑(下播后的自由)' },
+    { template: 'jubensha', location: '全息剧本杀旗舰局', price: 3800, label: '全息旗舰局(内容素材天花板)', minWallet: 50000 },
+  ],
   // —— 女版(他们)——
-  ligong: [{ template: 'mishi', location: '中关村硬核解谜密室', price: 140, label: '解谜密室(工程师的浪漫)' }],
-  kevin: [{ template: 'wenquan', location: '健身房顶层汤池', price: 300, label: '汤泉放松(教练的恢复日)' }],
-  chenyu: [{ template: 'livehouse', location: '胡同小院弹唱夜', price: 120, label: '弹唱夜(主理人串场)' }],
-  alex: [{ template: 'wenquan', location: '金融街酒店SPA', price: 700, label: '高端SPA(卸下西装)' }],
-  zhouzheng: [{ template: 'mishi', location: '谍战主题密室', price: 130, label: '谍战密室(体制内的快乐)' }],
-  erhuange: [{ template: 'wenquan', location: '小汤山老牌温泉', price: 350, label: '温泉(收租人的养生局)' }],
-  laopao: [{ template: 'livehouse', location: '他乐队的专场', price: 100, label: 'TA的专场(第一排留给你)' }],
-  henry: [{ template: 'livehouse', location: '三里屯爵士现场', price: 380, label: '爵士现场(海归的乡愁)' }],
-  dayong: [{ template: 'mishi', location: '烈火主题密室', price: 150, label: '密室(他全程职业本能)' }],
-  abao: [{ template: 'livehouse', location: '阿豹打碟的Club', price: 180, label: 'TA的场子(打碟之夜)' }],
-  laomo: [{ template: 'mishi', location: '影视基地沉浸密室', price: 260, label: '沉浸密室(老莫点评运镜)' }],
-  guyi: [{ template: 'mishi', location: '民国戏中戏密室', price: 170, label: '戏中戏密室(他飙演技)' }],
+  ligong: [
+    { template: 'mishi', location: '中关村硬核解谜密室', price: 140, label: '解谜密室(工程师的浪漫)' },
+    { template: 'dinner', location: '西二旗大排档', price: 75, label: '下班撸串(需求评审的延长线)' },
+    { template: 'expo', location: '航天科技特展VIP专场', price: 3600, label: '航天VIP专场(他的圣地)', minWallet: 50000 },
+  ],
+  kevin: [
+    { template: 'wenquan', location: '健身房顶层汤池', price: 300, label: '汤泉放松(教练的恢复日)' },
+    { template: 'sport', location: '奥森免费训练局', price: 30, label: '免费私教课(他只教你)' },
+    { template: 'wenquan', location: '高端运动康复SPA', price: 5800, label: '康复SPA(运动员待遇)', minWallet: 50000 },
+  ],
+  chenyu: [
+    { template: 'livehouse', location: '胡同小院弹唱夜', price: 120, label: '弹唱夜(主理人串场)' },
+    { template: 'citywalk', location: '胡同咖啡地图暴走', price: 68, label: '咖啡暴走(他的私藏地图)' },
+    { template: 'dinner', location: '主厨私宴(他刷脸订的)', price: 4600, label: '主厨私宴(全城等三个月)', minWallet: 50000 },
+  ],
+  alex: [
+    { template: 'wenquan', location: '金融街酒店SPA', price: 700, label: '高端SPA(卸下西装)' },
+    { template: 'citywalk', location: '金融街深夜餐车', price: 50, label: '深夜餐车(投行人的食堂)' },
+    { template: 'dinner', location: '国贸顶层Omakase头位', price: 6800, label: 'Omakase头位(他的主场请回去)', minWallet: 50000 },
+  ],
+  zhouzheng: [
+    { template: 'mishi', location: '谍战主题密室', price: 130, label: '谍战密室(体制内的快乐)' },
+    { template: 'park', location: '玉渊潭公园划船', price: 60, label: '公园划船(最正经的浪漫)' },
+    { template: 'dinner', location: '老字号包间宴请', price: 3800, label: '老字号包间(他可未必自在)', minWallet: 50000 },
+  ],
+  erhuange: [
+    { template: 'wenquan', location: '小汤山老牌温泉', price: 350, label: '温泉(收租人的养生局)' },
+    { template: 'dinner', location: '豆汁焦圈早点摊', price: 30, label: '豆汁考验局(过了算自己人)' },
+    { template: 'wenquan', location: '私汤小院一日', price: 5200, label: '私汤小院(爷的顶配养生)', minWallet: 50000 },
+  ],
+  laopao: [
+    { template: 'livehouse', location: '他乐队的专场', price: 100, label: 'TA的专场(第一排留给你)' },
+    { template: 'livehouse', location: '公园即兴弹唱', price: 30, label: '公园弹唱(他背着琴来)' },
+    { template: 'livehouse', location: '音乐节VIP双人通票', price: 3200, label: '音乐节VIP(他嘴上嫌弃)', minWallet: 50000 },
+  ],
+  henry: [
+    { template: 'livehouse', location: '三里屯爵士现场', price: 380, label: '爵士现场(海归的乡愁)' },
+    { template: 'dinner', location: '美式Diner汉堡店', price: 90, label: 'Diner汉堡(他留学时的深夜)' },
+    { template: 'bar', location: '外资会所雪茄吧', price: 7800, label: '会所雪茄吧(他的舒适区)', minWallet: 50000 },
+  ],
+  dayong: [
+    { template: 'mishi', location: '烈火主题密室', price: 150, label: '密室(他全程职业本能)' },
+    { template: 'dinner', location: '消防队门口炸酱面', price: 40, label: '炸酱面(他的日常食堂)' },
+    { template: 'park', location: '游乐园全项目双人日', price: 3000, label: '游乐园包天(他比你还兴奋)', minWallet: 50000 },
+  ],
+  abao: [
+    { template: 'livehouse', location: '阿豹打碟的Club', price: 180, label: 'TA的场子(打碟之夜)' },
+    { template: 'livehouse', location: '天台日落DJ set', price: 30, label: '天台set(他打给你一个人)' },
+    { template: 'bar', location: 'Club卡座包夜', price: 6600, label: '卡座包夜(整场的C位)', minWallet: 50000 },
+  ],
+  laomo: [
+    { template: 'mishi', location: '影视基地沉浸密室', price: 260, label: '沉浸密室(老莫点评运镜)' },
+    { template: 'dinner', location: '剧组盒饭体验', price: 45, label: '剧组盒饭(他说这叫体验生活)' },
+    { template: 'expo', location: '电影节红毯+首映礼', price: 8800, label: '首映礼双人(他的饼实现了一角)', minWallet: 50000 },
+  ],
+  guyi: [
+    { template: 'mishi', location: '民国戏中戏密室', price: 170, label: '戏中戏密室(他飙演技)' },
+    { template: 'park', location: '公园走位教学', price: 35, label: '走位教学(横店同款)' },
+    { template: 'jubensha', location: '影视城实景剧本杀包场', price: 4800, label: '实景包场(给他当一天主角)', minWallet: 50000 },
+  ],
+}
+
+// ============ 金钱观(love=吃排场 / hate=反感烧钱 / 不配=中立) ============
+export const MONEY_VIEWS: Record<string, 'love' | 'hate'> = {
+  // —— 男版 ——
+  linda: 'love',
+  cici: 'love',
+  nana: 'love',
+  beibei: 'love',
+  luna: 'love',
+  xiaoman: 'hate',
+  jingjing: 'hate',
+  vv: 'hate',
+  // —— 女版 ——
+  alex: 'love',
+  henry: 'love',
+  laomo: 'love',
+  kevin: 'love',
+  ligong: 'hate',
+  zhouzheng: 'hate',
+  laopao: 'hate',
+  dayong: 'hate',
 }
 
 // ============ 说话风格偏好(frame=吃框架逻辑 / flatter=吃谄媚彩虹屁 / 不配=两不吃) ============

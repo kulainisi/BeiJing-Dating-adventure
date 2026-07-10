@@ -40,13 +40,16 @@ export function newGame(version: Version, edu: EduId, prof: ProfId, seed?: numbe
   const profT = findProfession(prof)
   const origin = weighted(ORIGINS, (o) => o.weight)!
 
-  const culture = Math.max(2, Math.min(8, profT.culture + eduT.cultureMod))
-  const wallet = Math.max(1000, profT.wallet + eduT.walletMod + origin.walletBonus)
-  const salary = Math.round(profT.salary * eduT.salaryMul)
+  const culture = Math.max(2, Math.min(8, profT.culture + eduT.cultureMod + (origin.cultureMod ?? 0)))
+  const wallet =
+    origin.id === 'rich'
+      ? 99999999 // 钞能力:一串数不过来的 9,压过一切修正
+      : Math.max(1000, profT.wallet + eduT.walletMod + origin.walletBonus)
+  const salary = Math.round(profT.salary * eduT.salaryMul * (origin.salaryMul ?? 1))
   const rent = origin.rentFree ? 0 : profT.rent
   const hiddenLiquor = Math.min(
     10,
-    1 + Math.floor(rand() * 8) + (profT.liquorMod ?? 0) + eduT.liquorMod,
+    1 + Math.floor(rand() * 8) + (profT.liquorMod ?? 0) + eduT.liquorMod + (origin.liquorMod ?? 0),
   )
 
   const chars = getCharacters(version)
@@ -56,7 +59,7 @@ export function newGame(version: Version, edu: EduId, prof: ProfId, seed?: numbe
     npcs[c.id] = {
       id: c.id,
       stage: 'locked',
-      favor: 12 + (profT.favorMod ?? 0), // 社交型职业光环:开局好感更高
+      favor: 12 + (profT.favorMod ?? 0) + (origin.favorMod ?? 0), // 社交职业光环+出身人脉(老北京er)叠加
       mood: rollMood(),
       topicIdx: 0,
       usedOpinions: [],
@@ -190,10 +193,12 @@ export function sleep(s: GameState): SleepResult {
     }
   }
   // 没抽中事件的早上:高好感的人可能主动来找你(约 2-3 天一次,必须处理)
+  // 有官方对象时优先走情侣专属剧情(概率也略升——恋爱后的日子事儿更多)
   let pingNpcId: string | undefined
-  if (!eventId && s.day >= 3 && s.day - (s.lastPingDay ?? 0) >= 2 && chance(0.45)) {
+  const partner = Object.values(s.npcs).find((n) => n.stage === 'confirmed')
+  if (!eventId && s.day >= 3 && s.day - (s.lastPingDay ?? 0) >= 2 && chance(partner ? 0.55 : 0.45)) {
     const candidates = Object.values(s.npcs).filter((n) => isAlive(n) && n.favor >= 25)
-    const t = weighted(candidates, (n) => n.favor)
+    const t = partner && chance(0.65) ? partner : weighted(candidates, (n) => n.favor)
     if (t) {
       pingNpcId = t.id
       s.lastPingDay = s.day
@@ -401,6 +406,25 @@ export function buildDateSession(s: GameState, profile: CharacterProfile, spot: 
   chargeWallet(s, spot.price) // UI 侧已保证不会当场归零;真归零走 bankrupt
 
   const sc = getTemplate(spot.template)(profile, npc, s, spot)
+
+  // 金钱观:有人吃排场,有人反感烧钱——按场地价位开场定调(favor 直调 + 开场旁白)
+  if (profile.moneyView === 'love') {
+    if (spot.price >= 1200) {
+      npc.favor = Math.min(100, npc.favor + 6)
+      sc.nodes[sc.start].lines.unshift({ who: 'nar', text: `${profile.name}看了眼这排场,眼睛亮了:「可以啊你,会选地方。」` })
+    } else if (spot.price <= 100) {
+      npc.favor = Math.max(0, npc.favor - 5)
+      sc.nodes[sc.start].lines.unshift({ who: 'nar', text: `${profile.name}环顾四周,礼貌地笑了笑:「就……这?也行,挺,接地气的。」` })
+    }
+  } else if (profile.moneyView === 'hate') {
+    if (spot.price >= 1200) {
+      npc.favor = Math.max(0, npc.favor - 7)
+      sc.nodes[sc.start].lines.unshift({ who: 'nar', text: `${profile.name}看了眼人均消费,眉头皱了一下:「花这么多钱……你是不是觉得我很物质?」` })
+    } else if (spot.price <= 100) {
+      npc.favor = Math.min(100, npc.favor + 4)
+      sc.nodes[sc.start].lines.unshift({ who: 'nar', text: `${profile.name}在这种小地方明显松弛下来:「这种店才有意思,比装模作样的强多了。」` })
+    }
+  }
 
   // 随机注入一条公用约会小插曲(约40%,共有池整局仅一次)
   if (chance(0.4)) {
