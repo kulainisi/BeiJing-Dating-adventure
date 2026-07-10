@@ -18,6 +18,9 @@ export type TemplateId =
   | 'livehouse'
   | 'wenquan'
 export type OriginId = 'normal' | 'rich' | 'energetic'
+export type EduId = 'gaozhi' | 'putong' | 'shehui'
+/** 说话风格:框架感(高教育)/ 谄媚会来事(社会大学);NPC 各有偏好 */
+export type StyleId = 'frame' | 'flatter'
 export type ProfId =
   | 'waimai'
   | 'zhuangxiu'
@@ -44,7 +47,61 @@ export const SKILL_DISPLAY: Record<SkillId, { name: string; emoji: string }> = {
   money: { name: '钞能力', emoji: '💰' },
 }
 
-// ============ 开局:职业卡(男女分表,底层→顶层;职业决定薪资/房租/文化/工作事件) ============
+// ============ 开局第一步:教育背景(决定说话风格:框架 vs 谄媚) ============
+export interface EduBg {
+  id: EduId
+  name: string
+  emoji: string
+  desc: string
+  /** 叠加在职业文化水平上 */
+  cultureMod: number
+  salaryMul: number
+  walletMod: number
+  liquorMod: number
+  /** 说话风格:对上 NPC 偏好的选项大加分,对错减分 */
+  style?: StyleId
+}
+
+export const EDU_BGS: EduBg[] = [
+  {
+    id: 'gaozhi',
+    name: '高知',
+    emoji: '🎓',
+    desc: '名校出身,说话自带框架 · 文化+1 · 月薪x1.15 · 存款-2000(读书读的) · 吃逻辑的人爱这口',
+    cultureMod: 1,
+    salaryMul: 1.15,
+    walletMod: -2000,
+    liquorMod: 0,
+    style: 'frame',
+  },
+  {
+    id: 'putong',
+    name: '普通青年',
+    emoji: '📖',
+    desc: '普通本科,说话不出错也不出彩 · 无修正,主打一个平凡',
+    cultureMod: 0,
+    salaryMul: 1,
+    walletMod: 0,
+    liquorMod: 0,
+  },
+  {
+    id: 'shehui',
+    name: '社会大学',
+    emoji: '🤝',
+    desc: '早早进社会,嘴甜会来事 · 文化-1 · 存款+1000 · 酒量+1 · 吃捧的人爱这口',
+    cultureMod: -1,
+    salaryMul: 1,
+    walletMod: 1000,
+    liquorMod: 1,
+    style: 'flatter',
+  },
+]
+
+export function findEdu(id: string | undefined): EduBg {
+  return EDU_BGS.find((e) => e.id === id) ?? EDU_BGS[1]
+}
+
+// ============ 开局第二步:职业卡(男女分表,底层→顶层;职业决定薪资/房租/文化/工作事件) ============
 export interface Profession {
   id: ProfId
   name: string
@@ -335,6 +392,8 @@ export interface CheckDef {
 
 export interface Effects {
   favor?: number
+  /** 说话风格标记(框架/谄媚):引擎按 NPC 的 stylePref 加减分(对上+4/对错-3) */
+  style?: StyleId
   /** 隐藏好感变动:不显示浮动数字、不触发里程碑(已读不回等冷暴力用) */
   hiddenFavor?: number
   /** 玩家心情变动(暗值) */
@@ -395,6 +454,8 @@ export interface OpinionOption {
   saying?: string
   /** 需要持有某 flag 才可见(如 prof:hushi 职业专属回答) */
   showIf?: string
+  /** 说话风格标记(框架/谄媚),引擎按 NPC 偏好加减分 */
+  style?: StyleId
 }
 
 export interface OpinionQ {
@@ -438,6 +499,8 @@ export interface CharacterProfile {
   blockLines: string[]
   /** 看法题的角色定制反应(不配则用通用台词) */
   opinionReacts?: { good?: string[]; bad?: string[]; meh?: string[] }
+  /** 说话风格偏好:frame=吃框架逻辑,flatter=吃谄媚彩虹屁;不配=两不吃 */
+  stylePref?: StyleId
 }
 
 // ============ 运行时状态 ============
@@ -497,6 +560,8 @@ export interface GameState {
   /** 玩家隐藏心情 0-100,不展示 */
   mood: number
   origin: OriginId
+  /** 教育背景(决定说话风格:框架/谄媚) */
+  edu: EduId
   /** 职业(决定薪资/房租/文化/工作事件池) */
   prof: ProfId
   /** 隐藏酒量 1-10,不展示 */

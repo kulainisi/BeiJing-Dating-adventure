@@ -227,8 +227,24 @@ const dinner: DateTemplate = (p, n, s, spot) => {
         },
         { text: '老实回答:有人约才动,人是社会性动物', effects: { favor: 3 }, goto: 'talk_plain2' },
         { text: '反问:怎么,你是想约我下周末?', effects: { favor: 6 }, danmaku: ['#smart'], goto: 'talk_flirt' },
+        {
+          text: '结构化作答:我周末分三块——运动、输入、留白。留白那块,最近想留给一个人',
+          showIf: 'edu:gaozhi',
+          effects: { favor: 6, style: 'frame' },
+          goto: 'talk_style',
+        },
+        {
+          text: '反手一捧:我周末干嘛不重要,重要的是你开口,我肯定有空',
+          showIf: 'edu:shehui',
+          effects: { favor: 6, style: 'flatter' },
+          goto: 'talk_style',
+        },
       ],
     }),
+    node('talk_style', [
+      npc('「……你这张嘴啊。」'),
+      nar('这句话对不对味,全看对面的人吃不吃你这一套。TA低头吃菜的嘴角,给出了答案。'),
+    ], { next: 'bill' }),
     node('talk_smart', [
       nar('心眼子检定成功。你听懂了:TA在问「你是无聊了才找我,还是真的想见我」。'),
       me('「主动安排。比如今天,是我这周唯一在乎的安排。」'),

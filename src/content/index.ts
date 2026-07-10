@@ -9,7 +9,7 @@ import { getEventsFor, findEvent } from './events'
 export { CODES } from './shared'
 export { getWorkEvents } from './work'
 export { buildPing } from './pings'
-import { EXTRA_SPOTS, EXTRA_TOPICS, OPINION_REACTS } from './v4'
+import { EXTRA_SPOTS, EXTRA_TOPICS, OPINION_REACTS, STYLE_PREFS } from './v4'
 export { getEndings, getAllEndings, findEnding } from './endings'
 export { DANMAKU, resolveDanmaku } from './comments'
 export { findEvent }
@@ -23,6 +23,7 @@ function withV4(chars: CharacterProfile[]): CharacterProfile[] {
     dateSpots: [...c.dateSpots, ...(EXTRA_SPOTS[c.id] ?? [])],
     topics: [...c.topics, ...(EXTRA_TOPICS[c.id] ?? [])],
     opinionReacts: OPINION_REACTS[c.id] ?? c.opinionReacts,
+    stylePref: STYLE_PREFS[c.id] ?? c.stylePref,
   }))
 }
 

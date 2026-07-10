@@ -15,6 +15,18 @@ export const OPINIONS: OpinionQ[] = [
       { text: '秒回:跟我出来就没有AA这个选项,我买单', tags: ['flex', 'romantic'] },
       { text: '认真分析:AA是数学上的最优解,感情不能有坏账', tags: ['frugal'] },
       { text: '回:这种事都要拿出来讨论,格局是不是小了?', tags: ['zhi'] },
+      {
+        text: '条分缕析:这事分三层——关系阶段、金额量级、谁发起。框架立住了,钱就不伤感情',
+        tags: ['practical'],
+        showIf: 'edu:gaozhi',
+        style: 'frame',
+      },
+      {
+        text: '顺杆爬:跟你这样的人吃饭,谁买单谁赚了,抢着付都来不及',
+        tags: ['romantic'],
+        showIf: 'edu:shehui',
+        style: 'flatter',
+      },
     ],
   },
   {
@@ -76,6 +88,18 @@ export const OPINIONS: OpinionQ[] = [
       { text: '回:统计学都不算,巴纳姆效应罢了', tags: ['practical', 'zhi'] },
       { text: '回:你信我就信,今天我的上升星座是你', tags: ['romantic', 'flex'] },
       { text: '回:比起星座,我更信八字,要不要合一下?', tags: ['trad'] },
+      {
+        text: '学理拆解:MBTI的信效度确实有争议,但作为社交语言它很好用——分类是人类认知的脚手架',
+        tags: ['practical'],
+        showIf: 'edu:gaozhi',
+        style: 'frame',
+      },
+      {
+        text: '猛点头:准!你这直觉比MBTI准多了,我看你就是天生会看人的那挂',
+        tags: ['romantic'],
+        showIf: 'edu:shehui',
+        style: 'flatter',
+      },
     ],
   },
   {

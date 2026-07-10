@@ -135,6 +135,11 @@ export function loadRun(): GameState | null {
       s.rentDay = 0
       if (!s.flags.includes(`prof:${s.prof}`)) s.flags.push(`prof:${s.prof}`)
     }
+    // v4.1:教育背景回归(高知/普通/社会大学);旧值(体育生/名媛)与缺失都归一化为普通,gaozhi 原样保留
+    if (!s.edu || !['gaozhi', 'putong', 'shehui'].includes(s.edu)) {
+      s.edu = 'putong'
+    }
+    if (!s.flags.includes(`edu:${s.edu}`)) s.flags.push(`edu:${s.edu}`)
     return s
   } catch {
     return null

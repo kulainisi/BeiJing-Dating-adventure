@@ -26,8 +26,12 @@ npm run check-story  # ★ 内容校验:任何剧情改动后必跑,抓断头节
 
 - 游戏结构:14天,精力=行动点(聊天1/约会2/上班2,睡觉回满并扣日杂费 DAILY_SUNDRY ¥120);
   **房租不日扣**——newGame 掷 rentDay(第4-12天随机),当天一次性收整月房租,付不起=破产;
-  开局=**职业卡**(v4,男女分表各7张、底层→顶层:types.ts getProfessions,决定月薪/房租/文化/
-  favorMod 社交光环/工作事件池)+投胎骰只管精力与家底(84%普通/8%钞能力+20万有房/8%高精力);
+  开局三步=**教育背景**(EDU_BGS:高知=框架/普通/社会大学=谄媚,修正文化±1/薪资/存款/酒量)
+  →**职业卡**(v4,男女分表各7张、底层→顶层:types.ts getProfessions,决定月薪/房租/文化/
+  favorMod 社交光环/工作事件池)→投胎骰只管精力与家底(84%普通/8%钞能力+20万有房/8%高精力);
+- 说话风格博弈(v4.1):Effects.style('frame'/'flatter')选项 vs NPC stylePref(v4.ts STYLE_PREFS,
+  24人:吃框架9/吃谄媚10/两不吃5)——对上+4,对错-3,被动契合正向+1;风格选项用
+  showIf:'edu:gaozhi'/'edu:shehui' 门控(已铺:看法题aa/xingzuo、闲聊g_waimai、饭局talk);
   上班=doWork 按职业从 content/work.ts 抽加权事件,**有赚有赔**并动 mood;
   精力决定并聊上限1-4人,开局从全部12人自选;**钱归零任何时刻立即败北**
 - 属性映射(内容层检定 id 不变,引擎解析):mouth/mind/culture→文化水平;image→排面

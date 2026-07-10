@@ -25,6 +25,18 @@ export const GENERIC_CHATS: Script[] = [
         { text: '回:麻辣烫。快乐是刚需,沙拉是刑罚', effects: { favor: 4 }, goto: 'b' },
         { text: '回:都行,随便,你定就好', effects: { favor: -3, saying: 'suibian' }, goto: 'c' },
         { text: '回:今天降温,吃麻辣烫,多加点丸子,注意保暖', effects: { favor: 5, care: true }, goto: 'b' },
+        {
+          text: '回:决策树帮你画好了:预算、热量、幸福感三个维度,麻辣烫两票胜出',
+          effects: { favor: 4, style: 'frame' },
+          showIf: 'edu:gaozhi',
+          goto: 'b',
+        },
+        {
+          text: '回:你这身材吃啥都不怕,想吃麻辣烫就吃,人生苦短,你值得',
+          effects: { favor: 4, style: 'flatter' },
+          showIf: 'edu:shehui',
+          goto: 'b',
+        },
       ],
     }),
     node('b', [npc('好!就这么定了。有决断力的人真的很难得。')], { end: true }),

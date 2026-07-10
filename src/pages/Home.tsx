@@ -1,5 +1,16 @@
 import { useMemo, useState } from 'react'
-import { findProfession, GameState, getProfessions, ORIGINS, parallelCap, ProfId, Version } from '@/engine/types'
+import {
+  EDU_BGS,
+  EduId,
+  findEdu,
+  findProfession,
+  GameState,
+  getProfessions,
+  ORIGINS,
+  parallelCap,
+  ProfId,
+  Version,
+} from '@/engine/types'
 import { newGame } from '@/engine/game'
 import { getCharacters } from '@/content'
 import { getRerollTokens, loadRun, useRerollToken } from '@/engine/save'
@@ -12,6 +23,8 @@ export function Home({
   onGallery: () => void
 }) {
   const [version, setVersion] = useState<Version | null>(null)
+  const [edu, setEdu] = useState<EduId | null>(null)
+  const [eduDone, setEduDone] = useState(false)
   const [prof, setProf] = useState<ProfId | null>(null)
   const [pending, setPending] = useState<GameState | null>(null)
   const [picking, setPicking] = useState(false)
@@ -94,6 +107,7 @@ export function Home({
   if (pending) {
     const origin = ORIGINS.find((o) => o.id === pending.origin)!
     const profT = findProfession(pending.prof)
+    const eduT = findEdu(pending.edu)
     return (
       <div className="fade-in" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div className="scroll" style={{ padding: '10vh 22px 16px' }}>
@@ -106,6 +120,10 @@ export function Home({
           </p>
           <p style={{ fontSize: 14.5, color: 'var(--text-dim)', lineHeight: 1.9 }}>{origin.reveal}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 18, justifyContent: 'center' }}>
+            <span className="slot-tag">
+              {eduT.emoji} {eduT.name}
+              {eduT.style === 'frame' ? '(说话有框架)' : eduT.style === 'flatter' ? '(嘴甜会来事)' : ''}
+            </span>
             <span className="slot-tag">
               {profT.emoji} {profT.name}({profT.tier})
             </span>
@@ -125,7 +143,7 @@ export function Home({
               onClick={() => {
                 useRerollToken()
                 setPicks([])
-                setPending(newGame(pending.version, pending.prof))
+                setPending(newGame(pending.version, pending.edu, pending.prof))
               }}
             >
               🎲 不服这命?重投一次(剩 {getRerollTokens()} 次 · 靠成就攒的)
@@ -167,6 +185,8 @@ export function Home({
           <button
             className="btn"
             onClick={() => {
+              setEdu(null)
+              setEduDone(false)
               setProf(null)
               setVersion('male')
             }}
@@ -176,6 +196,8 @@ export function Home({
           <button
             className="btn"
             onClick={() => {
+              setEdu(null)
+              setEduDone(false)
               setProf(null)
               setVersion('female')
             }}
@@ -195,16 +217,73 @@ export function Home({
     )
   }
 
-  // ============ 职业卡 + 投胎 ============
+  // ============ 第一步:教育背景(说话风格) ============
+  if (!eduDone) {
+    return (
+      <div className="fade-in" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ padding: '12px 16px 4px', flexShrink: 0 }}>
+          <button className="btn ghost" style={{ width: 'auto', padding: '2px 0', fontSize: 14 }} onClick={() => setVersion(null)}>
+            ← 返回
+          </button>
+          <h2 style={{ fontSize: 19, fontWeight: 900, marginTop: 2 }}>第一步:你是怎么长大的?</h2>
+          <p style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 4, lineHeight: 1.7 }}>
+            教育背景决定你的说话方式——<b>框架</b>还是<b>会来事</b>。有人吃逻辑,有人吃彩虹屁,聊错频道全白搭。
+          </p>
+        </div>
+        <div className="scroll" style={{ padding: '10px 16px', minHeight: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+            {EDU_BGS.map((t) => (
+              <button
+                key={t.id}
+                className="npc-card"
+                style={{
+                  borderColor: edu === t.id ? 'var(--accent)' : undefined,
+                  background: edu === t.id ? 'rgba(255,93,143,.08)' : undefined,
+                }}
+                onClick={() => setEdu(t.id)}
+              >
+                <div className="big-avatar" style={{ background: 'var(--panel2)' }}>
+                  {t.emoji}
+                </div>
+                <div className="info">
+                  <div className="name">{t.name}</div>
+                  <div className="sub" style={{ whiteSpace: 'normal' }}>
+                    {t.desc}
+                  </div>
+                </div>
+                {edu === t.id && <span style={{ color: 'var(--accent)', fontWeight: 800 }}>✓</span>}
+              </button>
+            ))}
+          </div>
+          <div style={{ marginTop: 16, padding: 12, borderRadius: 12, background: 'var(--card)', border: '1px dashed var(--line)', fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.8 }}>
+            💬 <b>风格须知</b>:对话里会出现「框架感」或「谄媚系」的专属选项——说给吃这套的人,大加分;
+            说给不吃的人,反被扣。谁吃哪套,自己聊着摸。
+          </div>
+        </div>
+        <div style={{ padding: '8px 16px calc(12px + var(--safe-bottom))', flexShrink: 0, borderTop: '1px solid var(--line)' }}>
+          <button
+            className="btn primary"
+            disabled={!edu}
+            style={!edu ? { opacity: 0.5 } : undefined}
+            onClick={() => edu && setEduDone(true)}
+          >
+            {edu ? '下一步:选职业 →' : '先选一个出身'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ============ 第二步:职业卡 + 投胎 ============
   const profs = getProfessions(version)
   const tiers: ('底层' | '中层' | '顶层')[] = ['底层', '中层', '顶层']
   return (
     <div className="fade-in" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={{ padding: '12px 16px 4px', flexShrink: 0 }}>
-        <button className="btn ghost" style={{ width: 'auto', padding: '2px 0', fontSize: 14 }} onClick={() => setVersion(null)}>
+        <button className="btn ghost" style={{ width: 'auto', padding: '2px 0', fontSize: 14 }} onClick={() => setEduDone(false)}>
           ← 返回
         </button>
-        <h2 style={{ fontSize: 19, fontWeight: 900, marginTop: 2 }}>你在北京,靠什么吃饭?</h2>
+        <h2 style={{ fontSize: 19, fontWeight: 900, marginTop: 2 }}>第二步:你在北京,靠什么吃饭?</h2>
         <p style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 4, lineHeight: 1.7 }}>
           职业决定月薪、房租、文化水平和你在班上会遇到什么事。精力和家底?那要看投胎。
         </p>
@@ -266,10 +345,10 @@ export function Home({
           disabled={!prof}
           style={!prof ? { opacity: 0.5 } : undefined}
           onClick={() => {
-            if (!prof) return
+            if (!prof || !edu) return
             setPicks([])
             setPicking(false)
-            setPending(newGame(version, prof))
+            setPending(newGame(version, edu, prof))
           }}
         >
           {prof ? `🎲 掷投胎骰(${version === 'male' ? '男版' : '女版'})` : '先选一个吃饭的家伙'}

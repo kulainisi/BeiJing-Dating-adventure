@@ -1,4 +1,4 @@
-import { DateSpot, Script } from '@/engine/types'
+import { DateSpot, Script, StyleId } from '@/engine/types'
 import { chat, nar, node, npc } from './util'
 
 /**
@@ -36,6 +36,32 @@ export const EXTRA_SPOTS: Record<string, DateSpot[]> = {
   abao: [{ template: 'livehouse', location: '阿豹打碟的Club', price: 180, label: 'TA的场子(打碟之夜)' }],
   laomo: [{ template: 'mishi', location: '影视基地沉浸密室', price: 260, label: '沉浸密室(老莫点评运镜)' }],
   guyi: [{ template: 'mishi', location: '民国戏中戏密室', price: 170, label: '戏中戏密室(他飙演技)' }],
+}
+
+// ============ 说话风格偏好(frame=吃框架逻辑 / flatter=吃谄媚彩虹屁 / 不配=两不吃) ============
+export const STYLE_PREFS: Record<string, StyleId> = {
+  // —— 男版 ——
+  linda: 'frame', // 外企精英,吃结构化表达
+  yutong: 'frame', // 体制内,欣赏有条理的靠谱
+  linyi: 'frame', // 医生,逻辑控
+  coco: 'frame', // 只对聪明人有兴趣
+  cici: 'flatter', // 博主,彩虹屁是刚需
+  nana: 'flatter', // 酒桌女王,会来事的吃香
+  luna: 'flatter', // 追星女,夸就完了
+  beibei: 'flatter', // SKP猎人,吃捧
+  xiaolu: 'flatter', // 主播,礼物和彩虹屁一个性质
+  // xiaoman/jingjing/vv:文艺/直爽/亚逼,框架嫌你官腔,谄媚嫌你油——两不吃
+  // —— 女版 ——
+  ligong: 'frame', // 程序员,逻辑闭环
+  alex: 'frame', // 金融,尽调式表达
+  zhouzheng: 'frame', // 体制内,讲话要有条理
+  chenyu: 'frame', // 主理人,吃有见地的表达
+  kevin: 'flatter', // 销售出身,同行认同式吹捧
+  erhuange: 'flatter', // 爷就爱听舒坦话
+  henry: 'flatter', // 精英的虚荣心,吃捧
+  laomo: 'flatter', // 制片人,商业互吹是母语
+  guyi: 'flatter', // 小演员,被夸信念感会当真
+  // laopao/dayong/abao:老炮/憨直/地下,两不吃
 }
 
 // ============ 看法题角色定制反应 ============

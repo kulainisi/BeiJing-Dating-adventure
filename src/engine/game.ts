@@ -5,7 +5,9 @@ import {
   CharacterProfile,
   DateSpot,
   DAILY_SUNDRY,
+  EduId,
   ENERGY_COST,
+  findEdu,
   findProfession,
   GameState,
   Line,
@@ -30,17 +32,22 @@ import {
 } from '@/content'
 import { getUnlockedCodes } from './save'
 
-// ============ 开局:职业卡 + 投胎骰(投胎只管精力与家底运气) ============
-export function newGame(version: Version, prof: ProfId, seed?: number): GameState {
+// ============ 开局:教育背景 + 职业卡 + 投胎骰(投胎只管精力与家底运气) ============
+export function newGame(version: Version, edu: EduId, prof: ProfId, seed?: number): GameState {
   const s0 = seed ?? (Date.now() % 2147483647)
   seedRng(s0)
+  const eduT = findEdu(edu)
   const profT = findProfession(prof)
   const origin = weighted(ORIGINS, (o) => o.weight)!
 
-  const wallet = Math.max(1000, profT.wallet + origin.walletBonus)
-  const salary = profT.salary
+  const culture = Math.max(2, Math.min(8, profT.culture + eduT.cultureMod))
+  const wallet = Math.max(1000, profT.wallet + eduT.walletMod + origin.walletBonus)
+  const salary = Math.round(profT.salary * eduT.salaryMul)
   const rent = origin.rentFree ? 0 : profT.rent
-  const hiddenLiquor = Math.min(10, 1 + Math.floor(rand() * 8) + (profT.liquorMod ?? 0))
+  const hiddenLiquor = Math.min(
+    10,
+    1 + Math.floor(rand() * 8) + (profT.liquorMod ?? 0) + eduT.liquorMod,
+  )
 
   const chars = getCharacters(version)
   const npcs: Record<string, NpcState> = {}
@@ -75,15 +82,16 @@ export function newGame(version: Version, prof: ProfId, seed?: number): GameStat
     maxEnergy: origin.energy,
     mood: 60,
     origin: origin.id,
+    edu,
     prof,
     hiddenLiquor,
     rent,
     rentDay: 4 + Math.floor(rand() * 9), // 随机房租日(第 4-12 天),当天收整月房租
     salary,
     skills: {
-      mouth: profT.culture,
-      mind: profT.culture,
-      culture: profT.culture,
+      mouth: culture,
+      mind: culture,
+      culture,
       liquor: hiddenLiquor,
       image: imageFromWallet(wallet),
       money: origin.id === 'rich' ? 8 : salary >= 30000 ? 6 : 3,
@@ -91,7 +99,7 @@ export function newGame(version: Version, prof: ProfId, seed?: number): GameStat
     wallet,
     awkward: 0,
     npcs,
-    flags: [...getUnlockedCodes().map((c) => `code:${c}`), `prof:${prof}`],
+    flags: [...getUnlockedCodes().map((c) => `code:${c}`), `prof:${prof}`, `edu:${edu}`],
     opinionLog: {},
     stats: {
       spent: 0,
@@ -304,6 +312,7 @@ export function buildOpinionScript(q: OpinionQ, profile: CharacterProfile): Scri
       showIf: o.showIf,
       effects: {
         favor: isDeath ? 0 : isLove ? 9 : isHate ? -9 : 2,
+        style: o.style,
         awkward: isHate ? 8 : 0,
         mine: isHate,
         saying: o.saying,

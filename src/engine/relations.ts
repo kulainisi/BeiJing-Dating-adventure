@@ -162,6 +162,15 @@ export function applyEffects(
   // 玩家气场全开(高心情):正好感再 +1,制造"越顺越顺"的滚雪球
   if (s.mood >= 78 && favor > 0) favor += 1
 
+  // 说话风格博弈:框架/谄媚的选项,对上 TA 的偏好大加分,对错了减分
+  if (npc && profile && fx.style) {
+    if (profile.stylePref === fx.style) favor += 4
+    else if (profile.stylePref) favor -= 3
+  }
+  // 被动契合:你的教育背景风格正好是 TA 吃的那一套,正向互动小加成
+  const myStyle = s.edu === 'gaozhi' ? 'frame' : s.edu === 'shehui' ? 'flatter' : null
+  if (npc && profile && myStyle && profile.stylePref === myStyle && favor > 0) favor += 1
+
   // 挑剔暗骰:说对了的话也不一定被接住(对抗性)。
   // 挑剔度打底,TA 状态差时更难哄;打到人设(loves 命中)/好感已高/锦鲤日显著降低翻车率。
   if (npc && favor >= 4) {
