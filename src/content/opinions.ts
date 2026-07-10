@@ -35,6 +35,7 @@ export const OPINIONS: OpinionQ[] = [
       { text: '回:到点就跑。工作是老板的人生,不是我的', tags: ['chill', 'equal'] },
       { text: '回:看钱。钱给够,卷就是奋斗;钱不够,卷就是慈善', tags: ['practical', 'frugal'] },
       { text: '回:现在的年轻人就是吃不了苦', tags: ['zhi'] },
+      { text: '苦笑:我们这行没有卷不卷,只有裁员名单这期有没有你', tags: ['sincere', 'corporate'], showIf: 'prof:chengxuyuan' },
     ],
   },
   {
@@ -125,6 +126,7 @@ export const OPINIONS: OpinionQ[] = [
       { text: '回:夸张。会过日子的话很够了,不会过多少都不够', tags: ['practical', 'frugal'] },
       { text: '回:钱是活着的工具,不是活着的意义', tags: ['indie'] },
       { text: '回:两万都过不下去,那是能力问题', tags: ['zhi'] },
+      { text: '认真回:两万是我一单一单跑出来仨月的钱。日子不是过给帖子看的', tags: ['sincere', 'practical'], showIf: 'prof:waimai' },
     ],
   },
   {
@@ -175,6 +177,7 @@ export const OPINIONS: OpinionQ[] = [
       { text: '回:存在即合理,该喝就喝,这是社会的润滑剂', tags: ['trad', 'corporate'] },
       { text: '回:我的原则是:能喝,但只跟喜欢的人喝', tags: ['romantic'] },
       { text: '回:不能喝就别出来混', tags: ['zhi'] },
+      { text: '回:工地上敬酒不看职位看手艺。下次谁灌你,你说你对象是包工头', tags: ['sincere', 'chill'], showIf: 'prof:zhuangxiu' },
     ],
   },
   {

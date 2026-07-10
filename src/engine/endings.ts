@@ -22,7 +22,7 @@ export function settle(s: GameState): EndingResult {
     if (npc.flags.includes(profile.trueFlag)) {
       // 快餐化惩罚:留过宿的关系,真结局门槛提高(Coco 除外,她的真结局钥匙就是这个)
       const stayed = npc.flags.includes('stayed')
-      if (!stayed || npc.favor >= 95 || profile.id === 'coco') {
+      if (!stayed || npc.favor >= 85 || profile.id === 'coco') {
         return { id: `true_${npc.id}`, npcId: npc.id }
       }
     }

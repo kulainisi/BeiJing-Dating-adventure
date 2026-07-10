@@ -43,7 +43,7 @@ export const SAYINGS: Record<string, { name: string; revealLine: string }> = {
   gemen: { name: '开口"我有个朋友"', revealLine: '"我有个朋友"这五个字,在TA心里等于故事会开篇。' },
 }
 
-export function genQuirks(): { tastes: Record<string, number>; bans: string[] } {
+export function genQuirks(): { tastes: Record<string, number>; bans: string[]; pickiness: number } {
   const tasteKeys = Object.keys(TASTES)
   const tastes: Record<string, number> = {}
   for (const k of tasteKeys) {
@@ -51,7 +51,9 @@ export function genQuirks(): { tastes: Record<string, number>; bans: string[] } 
     tastes[k] = r < 0.3 ? 1 : r < 0.6 ? -1 : 0
   }
   const bans = pickN(Object.keys(SAYINGS), chance(0.5) ? 2 : 1)
-  return { tastes, bans }
+  // 隐藏挑剔度:有人好哄,有人怎么说都嫌你油(对抗性来源,不展示)
+  const pickiness = 0.15 + rand() * 0.5
+  return { tastes, bans, pickiness }
 }
 
 // ============ NPC 每日情绪 ============
@@ -79,7 +81,18 @@ export interface EffectFeedback {
   newMatch?: string
   /** 触发的关系里程碑(好感越线/确立/真心/同居),供 UI 放全屏庆祝;每种每人只发一次 */
   milestone?: string
+  /** 挑剔暗骰命中:这句话没被接住,附一句旁白(好话也不一定有好结果) */
+  pickyLine?: string
 }
+
+/** 挑剔暗骰旁白:让「好话没接住」有戏可看 */
+const PICKY_LINES = [
+  'TA只回了一个「嗯」。这句话好像没接住。',
+  '你觉得这句说得挺好,TA的回复却慢了半拍,淡了半度。',
+  '消息发出去,像一颗石子丢进棉花里。今天TA不太接招。',
+  '「哈哈。」两个字,一个句号。你重读了一遍自己刚才那句话,明明没毛病啊。',
+  'TA似乎在忙别的,回复敷衍得像自动回复。',
+]
 
 const aliveStages = ['chatting', 'dating', 'confirmed']
 
@@ -149,6 +162,26 @@ export function applyEffects(
   // 玩家气场全开(高心情):正好感再 +1,制造"越顺越顺"的滚雪球
   if (s.mood >= 78 && favor > 0) favor += 1
 
+  // 挑剔暗骰:说对了的话也不一定被接住(对抗性)。
+  // 挑剔度打底,TA 状态差时更难哄;打到人设(loves 命中)/好感已高/锦鲤日显著降低翻车率。
+  if (npc && favor >= 4) {
+    let p = (npc.pickiness ?? 0.3) * 0.5
+    if (npc.mood === 'grumpy') p += 0.15
+    else if (npc.mood === 'hungover') p += 0.1
+    else if (npc.mood === 'great') p -= 0.12
+    if (fx.opinion?.tags.some((t) => profile?.loves.includes(t))) p -= 0.12
+    if (fx.care) p -= 0.08
+    if (npc.favor >= 60) p -= 0.08
+    if (s.luckyDay) p -= 0.1
+    p = Math.max(0, Math.min(0.45, p))
+    if (chance(p)) {
+      // 命中:收益减半或归零;极端挑剔时甚至倒扣一点
+      const roll = rand()
+      favor = roll < 0.5 ? Math.floor(favor / 2) : roll < 0.9 ? 0 : -2
+      fb.pickyLine = pick(PICKY_LINES)
+    }
+  }
+
   // 口味怪癖
   if (npc && fx.taste) {
     const t = npc.quirkTastes[fx.taste] ?? 0
@@ -181,10 +214,23 @@ export function applyEffects(
     fb.favorDelta = favor
     if (favor >= 8) bumpMood(s, 5)
     if (fx.npcFlags) for (const f of fx.npcFlags) if (!npc.flags.includes(f)) npc.flags.push(f)
+    // 真心 flag 的第二条路:好感养到 80+ 且聊得够深,TA 自己把心交出来(不再只靠单一选项)
+    if (
+      profile &&
+      npc.favor >= 80 &&
+      npc.flags.includes('deep_talk') &&
+      !npc.flags.includes(profile.trueFlag)
+    ) {
+      npc.flags.push(profile.trueFlag)
+    }
     // 里程碑:好感首次越线 / 触碰真心(用 ms:* flag 去重,每种每人只发一次)
     const crossed = (line: number, key: string) =>
       prevFavor < line && npc.favor >= line && !npc.flags.includes(`ms:${key}`)
-    if (profile && fx.npcFlags?.includes(profile.trueFlag) && !npc.flags.includes('ms:true')) {
+    if (
+      profile &&
+      (fx.npcFlags?.includes(profile.trueFlag) || npc.flags.includes(profile.trueFlag)) &&
+      !npc.flags.includes('ms:true')
+    ) {
       npc.flags.push('ms:true')
       fb.milestone = 'true'
     } else if (crossed(50, 'favor50')) {
@@ -195,6 +241,12 @@ export function applyEffects(
       fb.milestone = 'favor30'
     }
   }
+
+  // 隐藏好感变动:不上浮动数字、不走里程碑(已读不回等冷暴力)
+  if (npc && fx.hiddenFavor) {
+    npc.favor = Math.max(0, Math.min(100, npc.favor + fx.hiddenFavor))
+  }
+  if (fx.mood) bumpMood(s, fx.mood)
 
   if (fx.mine) {
     s.stats.mines++

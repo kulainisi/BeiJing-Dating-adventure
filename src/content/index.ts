@@ -7,12 +7,28 @@ import { TEMPLATES, DateTemplate } from './scenes'
 import { getEventsFor, findEvent } from './events'
 
 export { CODES } from './shared'
+export { getWorkEvents } from './work'
+export { buildPing } from './pings'
+import { EXTRA_SPOTS, EXTRA_TOPICS, OPINION_REACTS } from './v4'
 export { getEndings, getAllEndings, findEnding } from './endings'
 export { DANMAKU, resolveDanmaku } from './comments'
 export { findEvent }
 
+/** v4 扩展合并:新约会地点/新话题/看法题定制反应 集中注册,不改角色文件(缓存,避免重复构造) */
+const mergedCache: Partial<Record<Version, CharacterProfile[]>> = {}
+
+function withV4(chars: CharacterProfile[]): CharacterProfile[] {
+  return chars.map((c) => ({
+    ...c,
+    dateSpots: [...c.dateSpots, ...(EXTRA_SPOTS[c.id] ?? [])],
+    topics: [...c.topics, ...(EXTRA_TOPICS[c.id] ?? [])],
+    opinionReacts: OPINION_REACTS[c.id] ?? c.opinionReacts,
+  }))
+}
+
 export function getCharacters(v: Version): CharacterProfile[] {
-  return v === 'male' ? MALE_CHARS : FEMALE_CHARS
+  mergedCache[v] ??= withV4(v === 'male' ? MALE_CHARS : FEMALE_CHARS)
+  return mergedCache[v]!
 }
 
 export function getCharacter(v: Version, id: string): CharacterProfile {

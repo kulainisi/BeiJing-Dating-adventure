@@ -249,8 +249,22 @@ const dinner: DateTemplate = (p, n, s, spot) => {
           text: '摸了摸口袋,露出「手机好像没带」的表情',
           check: { skill: 'mind', dc: 14, pass: 'bill_dodge_ok', fail: 'bill_dodge_fail', fumble: 'bill_dodge_fail' },
         },
+        {
+          text: '云淡风轻地买单:「这顿还不到我半小时的计费。」',
+          showIf: 'prof:lvshi',
+          effects: { wallet: -88, favor: loves(p, 'flex') ? 10 : 5 },
+          danmaku: ['#rich'],
+          goto: 'bill_pro',
+        },
+        {
+          text: '职业病点评:「这家翻台率不行,菜品毛利倒是控得好。买单。」',
+          showIf: 'prof:touhang',
+          effects: { wallet: -88, favor: loves(p, 'practical') || loves(p, 'corporate') ? 9 : 4 },
+          goto: 'bill_pro',
+        },
       ],
     }),
+    node('bill_pro', [npc('「……你们这行的人,是不是看什么都带报价?」'), nar('嘴上吐槽,TA还是把「下次我来」说得很自然——下次,又是一个下次。')], { next: 'wrap' }),
     node('bill_me', [npc('「动作这么快?!……下次我来。」'), nar('「下次」。你在心里把这两个字裱了起来。')], { next: 'wrap' }),
     node('bill_aa', [nar(loves(p, 'equal') ? 'TA眼睛一亮:「我就喜欢明算账的,舒服。」' : 'TA顿了半秒,「……好啊。」那半秒里有一部电视剧。')], { next: 'wrap' }),
     node('bill_dodge_ok', [nar('你演技精湛,TA毫无察觉地买了单,还安慰你「下次你来就行」。'), nar('你赢了这一单,但输给了今晚的自己。')], { effects: { favor: -1, npcFlags: [] }, next: 'wrap' }),
@@ -595,6 +609,169 @@ const park: DateTemplate = (p, n, s, spot) => {
   return scene(`date_park_${p.id}`, '游乐园', spot.location, 'park', nodes)
 }
 
+// ============ 🔐 密室逃脱 ============
+const mishi: DateTemplate = (p, n, s, spot) => {
+  const nodes: NodeDef[] = [
+    node('a', [
+      nar(`${spot.location}。NPC递上道具服,灯一灭,门在身后锁死。60分钟,一间暗房,两个人。`),
+      npc('「先说好,一会儿有恐怖桥段,你可别扔下我跑。」'),
+      nar('话音刚落,走廊尽头传来一声不知道是音效还是真人的哭腔。'),
+    ], {
+      choices: [
+        {
+          text: '冷静分析机关结构:先找光源,再找线索,跟我走',
+          check: { skill: 'mind', dc: 12, pass: 'lead_ok', fail: 'lead_fail', crit: 'lead_crit' },
+        },
+        { text: '把外套披给TA:抓紧我袖子,咱们慢慢来', effects: { favor: 8, care: true }, goto: 'protect' },
+        { text: '嘴硬三秒后,被音效吓得先叫出了声', effects: { favor: 2, awkward: 10 }, goto: 'scream' },
+      ],
+    }),
+    node('lead_crit', [
+      nar('你十分钟连解三个机关,NPC在监控室里发消息问店长:「这单是不是来了个同行?」'),
+      npc('「你也太稳了吧?!好,这局我就跟着你了。」'),
+      nar('黑暗里,TA的手很自然地搭上了你的肩,再没拿下来。'),
+    ], { effects: { favor: 13, npcFlags: ['tension'] }, danmaku: ['#smart'], next: 'beat2' }),
+    node('lead_ok', [nar('你有条不紊地推着进度,TA跟在你身后半步的位置。'), npc('「不错啊,关键时刻有个能靠的人。」')], { effects: { favor: 8 }, next: 'beat2' }),
+    node('lead_fail', [
+      nar('你自信满满地拉开一扇柜门——里面的「尸体」和你四目相对。'),
+      nar('你和它同时尖叫。TA在旁边笑到蹲下。'),
+      npc('「哈哈哈哈哈你刚才的音调比我还高!」'),
+    ], { effects: { favor: 3, awkward: 12 }, danmaku: ['#cringe'], next: 'beat2' }),
+    node('protect', [
+      nar('TA攥着你的袖口走完了整个暗廊。出机关房的时候,攥的已经不是袖口,是手腕。'),
+      npc('「……刚才,是本能。你别多想。」(TA先说的)'),
+    ], { effects: { npcFlags: ['tension'] }, next: 'beat2' }),
+    node('scream', [npc('「说好的保护我呢?!哈哈哈哈行,那我保护你吧。」'), nar('TA把你拽到身后。这个约会的攻防关系,当场倒转。')], { next: 'beat2' }),
+    node('beat2', [
+      nar('最后一关是双人协作:一人背密码,一人穿过红外线去输入。TA看了你一眼:'),
+      npc('「你记性好还是身手好?选一个。」'),
+    ], {
+      choices: [
+        {
+          text: '背密码:十六位乱码,过目不忘给TA看',
+          check: { skill: 'culture', dc: 12, pass: 'final_ok', fail: 'final_fail' },
+        },
+        {
+          text: '穿红外线:压低重心,给TA表演一个人体极限',
+          check: { skill: 'image', dc: 12, pass: 'final_ok', fail: 'final_flop' },
+        },
+      ],
+    }),
+    node('final_ok', [
+      nar('通关灯亮起的瞬间,店员进来说你们打破了本月纪录。'),
+      npc('「击个掌!」TA的手心很烫,「我们还挺合拍的,你发现没?」'),
+    ], { effects: { favor: 10, npcFlags: ['deep_talk'] }, danmaku: ['#win'], next: 'wrap' }),
+    node('final_fail', [nar('你背错了第九位,警报响起,全屋红光。'), npc('「哈哈哈哈没事,输了一起输,这才叫团建。」')], { effects: { favor: 4, awkward: 6 }, next: 'wrap' }),
+    node('final_flop', [nar('你在红外线阵里卡成了一个大字,NPC进来把你「救」了出去。'), npc('「刚才那个姿势,我拍下来了。删不删,看你今晚表现。」')], { effects: { favor: 5, awkward: 12 }, danmaku: ['#cringe'], next: 'wrap' }),
+    node('wrap', [nar(`走出${spot.location},重见天光,像共享了一场小小的生死。${p.name}揉着眼睛看你,笑意还没散。`)], { end: true }),
+  ]
+  return scene(`date_mishi_${p.id}`, '密室逃脱', spot.location, 'mishi', nodes)
+}
+
+// ============ 🎸 Livehouse ============
+const livehouse: DateTemplate = (p, n, s, spot) => {
+  const indie = loves(p, 'indie')
+  const nodes: NodeDef[] = [
+    node('a', [
+      nar(`${spot.location}。检票,寄存,耳膜开始适应音墙。台上调音,台下人头攒动。`),
+      npc('「跟你说,这支乐队我听了五年,主唱开口你就懂了。」'),
+      nar('灯光暗下来,第一个音炸开。人潮往前涌,把你们挤得肩贴肩。'),
+    ], {
+      choices: [
+        { text: '侧身替TA挡住人潮,让TA站在最好的位置', effects: { favor: 9, care: true }, danmaku: ['#simp'], goto: 'guard' },
+        {
+          text: '跟着音乐点头,在副歌处准确唱出了歌词',
+          check: { skill: 'culture', dc: indie ? 11 : 13, pass: 'sing_ok', fail: 'sing_fail' },
+        },
+        { text: '掏出手机开始录像,一录录了三首歌', effects: { favor: -6 }, goto: 'phone' },
+      ],
+    }),
+    node('guard', [
+      nar('整场演出,你是TA身后一堵会呼吸的墙。'),
+      npc('(TA回头,凑到你耳边喊)「你不用一直护着我!……不过,谢谢。」'),
+      nar('音乐太吵,有些话必须凑得很近才能说。这是Livehouse的物理学浪漫。'),
+    ], { effects: { npcFlags: ['tension'] }, next: 'encore' }),
+    node('sing_ok', [
+      npc('「??你也听他们?!」'),
+      nar('TA眼睛瞪圆了,像在人海里捡到了同类。接下来的每一首,你们都合唱。'),
+    ], { effects: { favor: 12, npcFlags: ['deep_talk'] }, danmaku: ['#win'], next: 'encore' }),
+    node('sing_fail', [
+      nar('你张嘴的时机不对,把第二段主歌唱成了第一段,还唱得很大声。'),
+      npc('「……你刚才唱的是哪个平行宇宙的版本?」'),
+    ], { effects: { favor: 0, awkward: 8 }, next: 'encore' }),
+    node('phone', [
+      npc('「诶,你能不能……先别录了?」'),
+      nar('TA指了指台上:「现场是用来活在里面的,不是用来存进相册的。」你默默收起了手机。'),
+    ], { next: 'encore' }),
+    node('encore', [
+      nar('安可环节。主唱说:「最后一首,送给今天带着重要的人来的朋友。」'),
+      nar('前奏响起,是一首慢歌。周围的人开始亮起手机灯,像一片星海。'),
+    ], {
+      choices: [
+        { text: '也打开手机灯,轻轻靠近TA的肩膀', effects: { favor: 10, npcFlags: ['tension'] }, danmaku: ['#win'], goto: 'slow' },
+        { text: '大声跟唱,把这首慢歌唱成你的告白预演', effects: { favor: indie ? 9 : 5 }, goto: 'loud' },
+        { text: '趁气氛正好,问TA:这首歌,你第一次听是什么时候?', effects: { favor: 8, npcFlags: ['deep_talk'], care: true }, goto: 'story' },
+      ],
+    }),
+    node('slow', [
+      nar('两盏手机灯挨在一起晃。TA的肩膀碰到你的,谁都没有让开。'),
+      npc('(散场后)「刚才那首歌……算了,没什么。走吧。」'),
+      nar('有些话被音乐替她说完了。'),
+    ], { next: 'wrap' }),
+    node('loud', [npc('「你嗓子还挺敢的!」'), nar('TA笑着跟你一起吼完了最后一个长音,嗓子哑了,眼睛亮了。')], { next: 'wrap' }),
+    node('story', [
+      npc('「第一次听是大四,在学校后门的小店,单曲循环了一个冬天。」'),
+      nar('TA讲了那个冬天的故事。散场的人流从你们身边绕过去,像水绕过石头。'),
+    ], { next: 'wrap' }),
+    node('wrap', [nar(`散场。耳鸣像一层温柔的膜。${p.name}的嗓音哑哑的:「下次巡演,还一起?」`)], { end: true }),
+  ]
+  return scene(`date_lh_${p.id}`, 'Livehouse', spot.location, 'livehouse', nodes)
+}
+
+// ============ ♨️ 温泉汤泉 ============
+const wenquan: DateTemplate = (p, n, s, spot) => {
+  const nodes: NodeDef[] = [
+    node('a', [
+      nar(`${spot.location}。换好泡汤服,水汽氤氲。露天池上方,北京难得的星星探出头来。`),
+      npc('「啊——」TA把自己沉到肩膀,长出一口气,「这才叫活着。」'),
+      nar('热水把人泡软,也把话匣子泡开。'),
+    ], {
+      choices: [
+        { text: '聊点泡汤才敢聊的:「说一件你从没跟人说过的小事吧」', effects: { favor: 9, npcFlags: ['deep_talk'] }, goto: 'deep' },
+        { text: '安静地泡着,偶尔搭一句,让热水替你们聊', goto: loves(p, 'chill') || loves(p, 'indie') ? 'quiet_ok' : 'quiet_meh' },
+        {
+          text: '给TA科普泡汤养生学,从水温讲到微量元素',
+          check: { skill: 'culture', dc: 13, pass: 'nerd_ok', fail: 'nerd_fail' },
+        },
+      ],
+    }),
+    node('deep', [
+      npc('「从没说过的……」TA看着水面想了很久。'),
+      npc('「小时候我偷偷改过一次成绩单。改完愧疚到自己又改了回去。」'),
+      nar('你们在热水里交换了几件谁都没说过的小事。有些秘密不重,但交出来的动作很重。'),
+    ], { effects: { favor: 6 }, next: 'beat2' }),
+    node('quiet_ok', [npc('「你知道吗,能一起安静待着不尴尬的人,很少。」'), nar('水声,风声,远处的笑声。你们什么都没说,又好像说了很多。')], { effects: { favor: 9 }, next: 'beat2' }),
+    node('quiet_meh', [nar('TA等了半天,发现你真的一句话都不打算说。'), npc('「……你不会泡睡着了吧?」')], { effects: { favor: -2 }, next: 'beat2' }),
+    node('nerd_ok', [npc('「偏硅酸?你连这个都懂?」'), nar('TA听得认真,末了说:「跟你出来总能学点东西,还挺上瘾的。」')], { effects: { favor: 8 }, next: 'beat2' }),
+    node('nerd_fail', [nar('你把「氡泉」念成了「dōng泉」,还编了一段功效。'), npc('「……你刚才那个字,念rán吧?」也不对。你们查了字典,一起社死。')], { effects: { favor: 1, awkward: 10 }, next: 'beat2' }),
+    node('beat2', [
+      nar('泡完出来,休息区。自动贩卖机的灯光下,TA的头发湿漉漉的,脸被泡得微红。'),
+      npc('「泡完汤必须吃点什么,这是规矩。」'),
+    ], {
+      choices: [
+        { text: '变出两根盐水冰棍:泡汤配冰棍,人间小满足', effects: { wallet: -12, favor: 9, care: true }, goto: 'ice' },
+        { text: '点两碗温泉蛋乌冬面,认真吃一顿宵夜', effects: { wallet: -96, favor: 7 }, goto: 'noodle' },
+        { text: '提议再战按摩椅:二十分钟,把这周的班全按掉', effects: { wallet: -40, favor: 6 }, goto: 'massage' },
+      ],
+    }),
+    node('ice', [npc('「你怎么知道我泡完就想吃这个!」'), nar('两根冰棍,一台贩卖机的白光。TA咬了一口,眯起眼睛,像只被顺毛的猫。')], { next: 'wrap' }),
+    node('noodle', [nar('热汤下肚,TA满足地叹气:「泡汤+乌冬,这个组合谁发明的,应该发诺贝尔奖。」')], { next: 'wrap' }),
+    node('massage', [nar('两台按摩椅并排嗡嗡作响。你们被揉得东倒西歪,笑作一团,像两条搁浅的鱼。'), npc('「哈哈哈哈别说话,说话咬舌头——」')], { next: 'wrap' }),
+    node('wrap', [nar(`夜风把水汽吹散。${p.name}的头发还没全干,整个人都是软的:「今天……好像把这个月的疲惫都还掉了。」`)], { end: true }),
+  ]
+  return scene(`date_wq_${p.id}`, '温泉汤泉', spot.location, 'wenquan', nodes)
+}
+
 export const TEMPLATES: Record<TemplateId, DateTemplate> = {
   bar,
   expo,
@@ -605,4 +782,7 @@ export const TEMPLATES: Record<TemplateId, DateTemplate> = {
   ktv,
   jubensha,
   park,
+  mishi,
+  livehouse,
+  wenquan,
 }

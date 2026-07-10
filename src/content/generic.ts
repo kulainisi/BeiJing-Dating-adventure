@@ -59,10 +59,12 @@ export const GENERIC_CHATS: Script[] = [
         { text: '回:把这句话裱起来,以后开设计博物馆用得上', effects: { favor: 6 }, goto: 'b' },
         { text: '回:深呼吸,骂归骂,钱照收。你是专业的', effects: { favor: 5, care: true }, goto: 'b' },
         { text: '回:甲方也不容易,互相理解一下', effects: { favor: -4 }, goto: 'c' },
+        { text: '同行会心一击:我上周的需求是「要年轻化但不能幼稚」。交换一下甲方黑名单?', effects: { favor: 8 }, showIf: 'prof:xinmeiti', danmaku: ['#smart'], goto: 'd' },
       ],
     }),
     node('b', [npc('哈哈哈哈好,聊完这几句血压降了20。你是我的电子降压药。')], { end: true }),
     node('c', [npc('……你是甲方派来的吧。'), nar('你成功地站在了统一战线的对面。')], { end: true }),
+    node('d', [npc('?!你也是干这行的?!'), npc('来,拉个「甲方受害者互助群」,就咱俩,群名我都想好了:《血压支撑联盟》。')], { end: true }),
   ]),
   chat('g_pinhaofan', [
     node('a', [npc('坦白:我刚才点了个拼好饭,和陌生人拼的,便宜八块。你会瞧不起我吗,哈哈。')], {
@@ -114,11 +116,13 @@ export const GENERIC_CHATS: Script[] = [
         { text: '回:抢到了吗?没抢到我帮你一起蹲,四只手总比两只快', effects: { favor: 7, care: true }, goto: 'b' },
         { text: '回:身体要紧,是哪里不舒服?', effects: { favor: 5, care: true }, goto: 'c' },
         { text: '回:多喝热水,可能就好了', effects: { favor: -3, saying: 'water' }, goto: 'd' },
+        { text: '亮明身份:我就是干这行的。挂号有窍门,放号时间我发你,别熬夜硬抢', effects: { favor: 9, care: true }, showIf: 'prof:hushi', danmaku: ['#smart'], goto: 'e' },
       ],
     }),
     node('b', [npc('抢到了!但你这句话我记下了。关键时刻愿意出手速的,都是真朋友。')], { end: true }),
     node('c', [npc('没大事,老毛病。就是……你是第一个问「哪里不舒服」而不是「挂哪个科」的人。')], { end: true }),
     node('d', [npc('好的,热水。'), nar('对话像病历本一样被合上了。')], { end: true }),
+    node('e', [npc('?!行业内部人士!'), npc('这条人脉我先存了。以后我的健康,承包给你了哈。'), nar('「承包」这个词,TA用得毫不见外。')], { end: true }),
   ]),
   chat('g_yunyang', [
     node('a', [npc('我在云养一只流浪猫,楼下车棚的,叫煤球。今天它带了个朋友来吃饭,我粮预算超支了。')], {

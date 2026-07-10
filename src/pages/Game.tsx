@@ -3,6 +3,7 @@ import {
   CharacterProfile,
   ChoiceDef,
   ENERGY_COST,
+  findProfession,
   GameState,
   Line,
   MOODS,
@@ -34,7 +35,7 @@ import { performCheck } from '@/engine/checks'
 import { pick, seedRng } from '@/engine/rng'
 import { addDeath, addRun, clearRun, saveRun, unlockAchievements, unlockEnding } from '@/engine/save'
 import { ACHIEVEMENTS, Achievement, evalAchievements, evalMidRun } from '@/engine/achievements'
-import { findEnding, findEvent, getCharacter, getCharacters, resolveDanmaku } from '@/content'
+import { buildPing, findEnding, findEvent, getCharacter, getCharacters, resolveDanmaku } from '@/content'
 import { trackEnding, trackPlay } from '@/analytics'
 import { DanmakuLayer, DanmakuItem } from '@/components/Danmaku'
 import { Celebration } from '@/components/Celebration'
@@ -72,6 +73,9 @@ const SCENE_BG: Record<string, { grad: string; emoji: string }> = {
   ktv: { grad: 'linear-gradient(135deg,#6d28d9,#db2777)', emoji: '🎤' },
   jubensha: { grad: 'linear-gradient(135deg,#1e293b,#7c3aed)', emoji: '🕵️' },
   park: { grad: 'linear-gradient(135deg,#0e7490,#f59e0b)', emoji: '🎢' },
+  mishi: { grad: 'linear-gradient(135deg,#0f172a,#581c87)', emoji: '🔐' },
+  livehouse: { grad: 'linear-gradient(135deg,#7f1d1d,#a21caf)', emoji: '🎸' },
+  wenquan: { grad: 'linear-gradient(135deg,#134e4a,#0e7490)', emoji: '♨️' },
 }
 
 let danmakuId = 0
@@ -203,7 +207,11 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
     announceMatch(r.decay.find((d) => d.kind === 'match')?.npcId, faded.length > 0 ? 2400 : 400)
     if (checkAllBlocked(s)) return endGame('all_blocked')
     checkMidAchievements() // 睡后 maxParallel 等已更新,海王等成就可即时解锁
-    if (faded.length === 0) showToast(`😴 新的一天。房租和生活费扣了 ¥${r.cost}。`)
+    if (r.rentCharged > 0) {
+      showToast(`🏠 房东准时出现:「小X啊,这个月房租。」整月房租 ¥${r.rentCharged} + 日杂 ¥${r.cost - r.rentCharged},一次划走。`)
+    } else if (faded.length === 0) {
+      showToast(`😴 新的一天。日杂费扣了 ¥${r.cost}。`)
+    }
 
     if (r.eventId) {
       const ev = findEvent(r.eventId)
@@ -215,6 +223,16 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
         force()
         return
       }
+    }
+    // 有人主动来找你:必须处理(对话里自带「已读不回」的冷暴力选项)
+    if (r.pingNpcId && isAlive(s.npcs[r.pingNpcId])) {
+      const profile = getCharacter(s.version, r.pingNpcId)
+      touchNpc(s, r.pingNpcId)
+      const sc = buildPing(s.npcs[r.pingNpcId], profile)
+      saveRun(s)
+      setPhase({ t: 'session', sess: { script: sc, npcId: r.pingNpcId, type: 'event' } })
+      force()
+      return
     }
     saveRun(s)
     setPhase({ t: 'hub' })
@@ -501,12 +519,14 @@ function Hub({
   const alive = chars.filter((c) => isAlive(s.npcs[c.id]))
   const unread = chars.filter((c) => isAlive(s.npcs[c.id]) && s.npcs[c.id].unread).length
   const origin = ORIGINS.find((o) => o.id === s.origin)!
+  const profT = findProfession(s.prof)
   const hint = moodHint(s)
+  const rentPending = s.rent > 0 && s.rentDay > 0 && s.day < s.rentDay
   const actions: { emoji: string; title: string; desc: string; cost: number; onClick: () => void }[] = [
     { emoji: '💬', title: '回消息', desc: '推进一个人的聊天', cost: ENERGY_COST.chat, onClick: onChat },
     { emoji: '📍', title: '约会', desc: '花钱,涨好感,有戏剧', cost: ENERGY_COST.date, onClick: onDate },
-    { emoji: '🧑‍💻', title: '加班搬钱', desc: '加班费到手,全员好感小跌', cost: ENERGY_COST.work, onClick: onWork },
-    { emoji: '😴', title: '睡觉', desc: '结束今天:回精力,清社死,扣房租', cost: 0, onClick: onSleep },
+    { emoji: profT.emoji, title: '上班搞钱', desc: `干${profT.name}的活:有赚有赔,全员好感小跌`, cost: ENERGY_COST.work, onClick: onWork },
+    { emoji: '😴', title: '睡觉', desc: '结束今天:回精力,清社死,扣日杂费', cost: 0, onClick: onSleep },
   ]
   return (
     <div className="hub-wrap fade-in">
@@ -519,12 +539,21 @@ function Hub({
           {s.day > 3 && s.day <= 9 && '约会才能大幅拉好感,但钱包和风险都要管理。'}
           {s.day > 9 && `倒计时 ${TOTAL_DAYS - s.day + 1} 天,该把话说开了。`}
         </div>
+        {rentPending && (
+          <div style={{ fontSize: 12.5, color: 'var(--accent2)', lineHeight: 1.6, marginBottom: 10 }}>
+            🏠 这个月房租(¥{s.rent})还没收。房东最近总在楼道里晃,留好余粮。
+          </div>
+        )}
         {hint && (
           <div style={{ fontSize: 12.5, color: 'var(--purple)', fontStyle: 'italic', lineHeight: 1.6, marginBottom: 10 }}>
             {hint}
           </div>
         )}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          <span className="slot-tag" style={{ fontSize: 11.5 }}>
+            {profT.emoji}
+            {profT.name}
+          </span>
           <span className="slot-tag" style={{ fontSize: 11.5 }}>
             {origin.emoji}
             {origin.name}
@@ -956,6 +985,7 @@ function SessionView({
       const fb = applyEffects(s, npc, profile, c.effects)
       onFavor(fb.favorDelta)
       if (fb.tasteLine) appendLine({ who: 'nar', text: fb.tasteLine })
+      if (fb.pickyLine) appendLine({ who: 'nar', text: fb.pickyLine })
       if (fb.banHit && fb.banHit.first) appendLine({ who: 'nar', text: '……不知道为什么,TA的回复突然变得敷衍了。' })
       if (fb.milestone) onMilestone(fb.milestone)
       if (fb.ended) onPendingEnding({ id: fb.ended, npcId: sess.npcId ?? undefined })

@@ -14,8 +14,25 @@ export type TemplateId =
   | 'ktv'
   | 'jubensha'
   | 'park'
+  | 'mishi'
+  | 'livehouse'
+  | 'wenquan'
 export type OriginId = 'normal' | 'rich' | 'energetic'
-export type EduId = 'gaozhi' | 'putong' | 'tiyu' | 'mingyuan'
+export type ProfId =
+  | 'waimai'
+  | 'zhuangxiu'
+  | 'siji'
+  | 'jiaolian'
+  | 'chengxuyuan'
+  | 'guoqi'
+  | 'touhang'
+  | 'naicha'
+  | 'meijia'
+  | 'youshi'
+  | 'hushi'
+  | 'kongjie'
+  | 'xinmeiti'
+  | 'lvshi'
 
 /** 检定属性的展示名(暗骰原则下仅用于置灰理由等文案) */
 export const SKILL_DISPLAY: Record<SkillId, { name: string; emoji: string }> = {
@@ -27,87 +44,220 @@ export const SKILL_DISPLAY: Record<SkillId, { name: string; emoji: string }> = {
   money: { name: '钞能力', emoji: '💰' },
 }
 
-// ============ 开局:文化三档(第三档按版本:男版体育生 / 女版名媛) ============
-export interface EduTier {
-  id: EduId
+// ============ 开局:职业卡(男女分表,底层→顶层;职业决定薪资/房租/文化/工作事件) ============
+export interface Profession {
+  id: ProfId
   name: string
   emoji: string
+  tier: '底层' | '中层' | '顶层'
   culture: number
+  /** 月薪(工作事件收入按此比例浮动) */
+  salary: number
+  /** 月租(随机房租日一次性收取) */
+  rent: number
+  /** 初始存款 */
+  wallet: number
   desc: string
-  salaryMul: number
-  walletMod: number
-  liquorMod: number
-  sleepAwkBonus: number
-  /** 开局对所有 NPC 初始好感的加成(名媛的社交光环) */
+  /** 开局对所有 NPC 初始好感的加成(社交型职业的光环) */
   favorMod?: number
+  liquorMod?: number
+  sleepAwkBonus?: number
 }
 
-const GAOZHI: EduTier = {
-  id: 'gaozhi',
-  name: '高知',
-  emoji: '🎓',
-  culture: 7,
-  desc: '文化水平 7 · 月薪x1.3(名校溢价) · 存款 -2000(读书读的)',
-  salaryMul: 1.3,
-  walletMod: -2000,
-  liquorMod: 0,
-  sleepAwkBonus: 0,
-}
-const PUTONG: EduTier = {
-  id: 'putong',
-  name: '普通青年',
-  emoji: '📖',
-  culture: 5,
-  desc: '文化水平 5 · 无修正,主打一个平凡',
-  salaryMul: 1,
-  walletMod: 0,
-  liquorMod: 0,
-  sleepAwkBonus: 0,
-}
-const TIYU: EduTier = {
-  id: 'tiyu',
-  name: '体育生',
-  emoji: '🏀',
-  culture: 3,
-  desc: '文化水平 3 · 存款 +1000 · 酒量天赋异禀 · 睡一觉啥尴尬都忘了',
-  salaryMul: 1,
-  walletMod: 1000,
-  liquorMod: 2,
-  sleepAwkBonus: 10,
-}
-const MINGYUAN: EduTier = {
-  id: 'mingyuan',
-  name: '名媛',
-  emoji: '👑',
-  culture: 5,
-  desc: '文化水平 5 · 会来事,开局自带社交好感;排面看家底',
-  salaryMul: 1,
-  walletMod: 0,
-  liquorMod: 0,
-  sleepAwkBonus: 0,
-  favorMod: 8,
+const MALE_PROFS: Profession[] = [
+  {
+    id: 'waimai',
+    name: '外卖骑手',
+    emoji: '🛵',
+    tier: '底层',
+    culture: 3,
+    salary: 8000,
+    rent: 2600,
+    wallet: 4000,
+    desc: '风里来雨里去,准时率就是尊严。跑得多挣得多,摔一跤全赔进去',
+    liquorMod: 1,
+    sleepAwkBonus: 5,
+  },
+  {
+    id: 'zhuangxiu',
+    name: '装修师傅',
+    emoji: '🔨',
+    tier: '底层',
+    culture: 3,
+    salary: 13000,
+    rent: 3000,
+    wallet: 9000,
+    desc: '手艺人,挣的都是辛苦钱但真不少。工地练出来的酒量和心态',
+    liquorMod: 2,
+    sleepAwkBonus: 10,
+  },
+  {
+    id: 'siji',
+    name: '网约车司机',
+    emoji: '🚕',
+    tier: '中层',
+    culture: 4,
+    salary: 11000,
+    rent: 3200,
+    wallet: 7000,
+    desc: '方向盘一握,全北京的故事都听过。流水看着行,平台抽成看着心凉',
+  },
+  {
+    id: 'jiaolian',
+    name: '健身教练',
+    emoji: '💪',
+    tier: '中层',
+    culture: 4,
+    salary: 14000,
+    rent: 4200,
+    wallet: 8000,
+    desc: '卖课为生,嘴甜是职业技能。开局自带社交好感',
+    favorMod: 6,
+    liquorMod: 1,
+  },
+  {
+    id: 'chengxuyuan',
+    name: '程序员',
+    emoji: '🧑‍💻',
+    tier: '中层',
+    culture: 6,
+    salary: 26000,
+    rent: 5500,
+    wallet: 16000,
+    desc: '大厂P6,工资高,头发少。年终奖能救命,毕业裁员能要命',
+  },
+  {
+    id: 'guoqi',
+    name: '国企职员',
+    emoji: '🏢',
+    tier: '中层',
+    culture: 6,
+    salary: 11000,
+    rent: 4000,
+    wallet: 12000,
+    desc: '钱不多但稳,相亲市场硬通货。开局自带体面光环',
+    favorMod: 3,
+    sleepAwkBonus: 5,
+  },
+  {
+    id: 'touhang',
+    name: '投行精英',
+    emoji: '💼',
+    tier: '顶层',
+    culture: 7,
+    salary: 50000,
+    rent: 9500,
+    wallet: 35000,
+    desc: '国贸写字楼顶层,年薪百万。代价是没有下班这个概念',
+  },
+]
+
+const FEMALE_PROFS: Profession[] = [
+  {
+    id: 'naicha',
+    name: '奶茶店员',
+    emoji: '🧋',
+    tier: '底层',
+    culture: 3,
+    salary: 6500,
+    rent: 2400,
+    wallet: 3500,
+    desc: '站一天摇一天,微笑服务刻进DNA。钱少,但认识全商圈的人',
+    favorMod: 2,
+  },
+  {
+    id: 'meijia',
+    name: '美甲师',
+    emoji: '💅',
+    tier: '底层',
+    culture: 3,
+    salary: 9500,
+    rent: 2800,
+    wallet: 5000,
+    desc: '一单一小时,唠嗑技能满级。开局自带社交好感',
+    favorMod: 6,
+  },
+  {
+    id: 'youshi',
+    name: '幼儿园老师',
+    emoji: '🧒',
+    tier: '中层',
+    culture: 5,
+    salary: 8000,
+    rent: 3300,
+    wallet: 6000,
+    desc: '温柔耐心,哄娃十级。工资对不起职业素养,但相亲市场评价极高',
+    favorMod: 4,
+    sleepAwkBonus: 5,
+  },
+  {
+    id: 'hushi',
+    name: '护士',
+    emoji: '👩‍⚕️',
+    tier: '中层',
+    culture: 5,
+    salary: 12000,
+    rent: 3800,
+    wallet: 8000,
+    desc: '三班倒,夜班熬人。见过生死,一般的事吓不到你',
+  },
+  {
+    id: 'kongjie',
+    name: '空乘',
+    emoji: '✈️',
+    tier: '中层',
+    culture: 5,
+    salary: 16000,
+    rent: 5000,
+    wallet: 11000,
+    desc: '飞国际线,职业光环拉满。开局自带高社交好感',
+    favorMod: 8,
+  },
+  {
+    id: 'xinmeiti',
+    name: '新媒体运营',
+    emoji: '📱',
+    tier: '中层',
+    culture: 6,
+    salary: 13000,
+    rent: 4300,
+    wallet: 8000,
+    desc: '追热点改文案,数据焦虑症晚期。梗浓度全场最高',
+  },
+  {
+    id: 'lvshi',
+    name: '律师',
+    emoji: '⚖️',
+    tier: '顶层',
+    culture: 7,
+    salary: 42000,
+    rent: 9000,
+    wallet: 30000,
+    desc: '红圈所,时薪计费。逻辑锋利,战袍加身,没空谈恋爱才是最大问题',
+  },
+]
+
+/** 职业卡按版本给(男版偏体力/蓝领,女版偏服务业;底层→顶层均匀铺开) */
+export function getProfessions(version: Version): Profession[] {
+  return version === 'female' ? FEMALE_PROFS : MALE_PROFS
 }
 
-/** 文化三档按版本给:男版第三档体育生 / 女版第三档名媛 */
-export function getEduTiers(version: Version): EduTier[] {
-  return [GAOZHI, PUTONG, version === 'female' ? MINGYUAN : TIYU]
+/** 按 id 查职业(跨版本;未知 id 兜底为国企职员,兼容老存档) */
+export function findProfession(id: string | undefined): Profession {
+  return [...MALE_PROFS, ...FEMALE_PROFS].find((p) => p.id === id) ?? MALE_PROFS[5]
 }
 
-/** 按 id 查档(跨版本,供引擎结算/存档回读) */
-export function findEduTier(id: EduId): EduTier {
-  return [GAOZHI, PUTONG, TIYU, MINGYUAN].find((t) => t.id === id) ?? PUTONG
-}
-
-// ============ 开局:投胎骰(隐藏预设,抽中才揭晓) ============
+// ============ 开局:投胎骰(叠加在职业之上:只管精力与家底运气) ============
 export interface Origin {
   id: OriginId
   name: string
   emoji: string
   weight: number
   energy: number
-  wallet: number
-  rent: number
-  salary: number
+  /** 家底加成(叠加在职业初始存款上) */
+  walletBonus: number
+  /** 家里有房:房租归零 */
+  rentFree?: boolean
   reveal: string
 }
 
@@ -118,11 +268,9 @@ export const ORIGINS: Origin[] = [
     emoji: '🧑‍💻',
     weight: 84,
     energy: 4,
-    wallet: 12000,
-    rent: 5000,
-    salary: 18000,
+    walletBonus: 0,
     reveal:
-      '你睁开眼:合租次卧,月租五千,室友在客厅打游戏。存款一万二,月薪一万八。北京欢迎你——用它自己的方式。',
+      '你睁开眼:普普通通的北京早晨。没有天降的钱,也没有用不完的电——你有的,只有手上这份工作,和北京给每个人的同一套规则。',
   },
   {
     id: 'rich',
@@ -130,11 +278,10 @@ export const ORIGINS: Origin[] = [
     emoji: '💰',
     weight: 8,
     energy: 3,
-    wallet: 999999,
-    rent: 0,
-    salary: 80000,
+    walletBonus: 200000,
+    rentFree: true,
     reveal:
-      '你睁开眼:三环内的房,房本上有你的名字,家里给的。在家族企业挂了个职,月薪八万。钱对你来说只是数字——但精力不是,应酬太多,你总觉得累。',
+      '你睁开眼:三环内的房,房本上有你的名字,家里给的,卡里还躺着家里打的二十万。工作对你来说是体验生活——只是应酬太多,精力总差点意思。',
   },
   {
     id: 'energetic',
@@ -142,17 +289,15 @@ export const ORIGINS: Origin[] = [
     emoji: '⚡',
     weight: 8,
     energy: 8,
-    wallet: 6000,
-    rent: 3500,
-    salary: 12000,
+    walletBonus: 0,
     reveal:
-      '你睁开眼:青年公寓开间,月租三千五,存款六千,月薪一万二。穷,但你拥有这座城市最稀缺的资源——用不完的精力。别人下班瘫着,你还能再赴两个局。',
+      '你睁开眼:钱还是那点钱,班还是那个班。但你拥有这座城市最稀缺的资源——用不完的精力。别人下班瘫着,你还能再赴两个局。',
   },
 ]
 
 // ============ 经济常量 ============
-/** 每日吃喝通勤基础开销 */
-export const DAILY_FOOD = 80
+/** 每日日杂费(水电吃饭通勤等生活必需;房租另算,在随机房租日一次性收) */
+export const DAILY_SUNDRY = 120
 
 /** 行动精力消耗 */
 export const ENERGY_COST = { chat: 1, date: 2, work: 2 }
@@ -190,6 +335,10 @@ export interface CheckDef {
 
 export interface Effects {
   favor?: number
+  /** 隐藏好感变动:不显示浮动数字、不触发里程碑(已读不回等冷暴力用) */
+  hiddenFavor?: number
+  /** 玩家心情变动(暗值) */
+  mood?: number
   awkward?: number
   wallet?: number
   drink?: number
@@ -244,6 +393,8 @@ export interface OpinionOption {
   text: string
   tags: string[]
   saying?: string
+  /** 需要持有某 flag 才可见(如 prof:hushi 职业专属回答) */
+  showIf?: string
 }
 
 export interface OpinionQ {
@@ -285,6 +436,8 @@ export interface CharacterProfile {
   trueFlag: string
   trueHe: { title: string; badge: string; comment: string; secretCode?: string }
   blockLines: string[]
+  /** 看法题的角色定制反应(不配则用通用台词) */
+  opinionReacts?: { good?: string[]; bad?: string[]; meh?: string[] }
 }
 
 // ============ 运行时状态 ============
@@ -301,6 +454,8 @@ export interface NpcState {
   quirkTastes: Record<string, number>
   quirkBans: string[]
   banHits: string[]
+  /** 隐藏挑剔度 0-1:对「说对了的话」也可能不买账(对抗性暗骰),不展示 */
+  pickiness: number
   flags: string[]
   blockReason?: string
   lastDay: number
@@ -342,10 +497,13 @@ export interface GameState {
   /** 玩家隐藏心情 0-100,不展示 */
   mood: number
   origin: OriginId
-  edu: EduId
+  /** 职业(决定薪资/房租/文化/工作事件池) */
+  prof: ProfId
   /** 隐藏酒量 1-10,不展示 */
   hiddenLiquor: number
   rent: number
+  /** 随机房租日(第 4-12 天),当天一次性收整月房租 */
+  rentDay: number
   salary: number
   skills: Record<SkillId, number>
   wallet: number
@@ -362,6 +520,8 @@ export interface GameState {
   usedShared: string[]
   /** 最近抽到的事件 id(最多 3 个),用于防止随机事件连刷同一个 */
   recentEvents: string[]
+  /** 上次角色主动邀约/发消息的日子(控制频率:约 2-3 天一次) */
+  lastPingDay?: number
 }
 
 // ============ 结局 ============
@@ -375,6 +535,18 @@ export interface EndingDef {
   hint: string
   secretCode?: string
   xhsPost?: boolean
+}
+
+// ============ 工作事件(按职业分池,加权抽取,有赚有赔) ============
+export interface WorkOutcome {
+  /** 事件文案(toast 展示,金额写死在文案里) */
+  text: string
+  /** 钱包变动(可为负:赔钱/被罚) */
+  wallet: number
+  /** 心情变动(默认 -5:搞钱不是零成本) */
+  mood?: number
+  awkward?: number
+  weight: number
 }
 
 // ============ 随机事件 ============

@@ -120,8 +120,21 @@ export function loadRun(): GameState | null {
   try {
     const raw = localStorage.getItem(RUN_KEY)
     if (!raw) return null
-    const s = JSON.parse(raw) as GameState
+    const s = JSON.parse(raw) as GameState & { edu?: string }
     if (!s.version || !s.npcs) return null
+    // v4 迁移:老存档只有文化档(edu),映射到一个气质相近的职业;房租已按旧规则日扣过,不再补收
+    if (!s.prof) {
+      const male = s.version === 'male'
+      const eduMap: Record<string, GameState['prof']> = {
+        gaozhi: male ? 'chengxuyuan' : 'lvshi',
+        tiyu: 'jiaolian',
+        mingyuan: 'kongjie',
+        putong: male ? 'guoqi' : 'xinmeiti',
+      }
+      s.prof = eduMap[s.edu ?? ''] ?? (male ? 'guoqi' : 'xinmeiti')
+      s.rentDay = 0
+      if (!s.flags.includes(`prof:${s.prof}`)) s.flags.push(`prof:${s.prof}`)
+    }
     return s
   } catch {
     return null

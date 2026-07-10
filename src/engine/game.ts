@@ -4,16 +4,16 @@ import { bumpMood, moodDrift } from './mood'
 import {
   CharacterProfile,
   DateSpot,
-  DAILY_FOOD,
-  EduId,
+  DAILY_SUNDRY,
   ENERGY_COST,
-  findEduTier,
+  findProfession,
   GameState,
   Line,
   NodeDef,
   NpcState,
   OpinionQ,
   ORIGINS,
+  ProfId,
   Script,
   TOTAL_DAYS,
   Version,
@@ -26,19 +26,21 @@ import {
   getOpinions,
   getSpicyChats,
   getTemplate,
+  getWorkEvents,
 } from '@/content'
 import { getUnlockedCodes } from './save'
 
-// ============ 开局:文化三档 + 投胎骰 ============
-export function newGame(version: Version, edu: EduId, seed?: number): GameState {
+// ============ 开局:职业卡 + 投胎骰(投胎只管精力与家底运气) ============
+export function newGame(version: Version, prof: ProfId, seed?: number): GameState {
   const s0 = seed ?? (Date.now() % 2147483647)
   seedRng(s0)
-  const eduT = findEduTier(edu)
+  const profT = findProfession(prof)
   const origin = weighted(ORIGINS, (o) => o.weight)!
 
-  const wallet = Math.max(1000, origin.wallet + eduT.walletMod)
-  const salary = Math.round(origin.salary * eduT.salaryMul)
-  const hiddenLiquor = Math.min(10, 1 + Math.floor(rand() * 8) + eduT.liquorMod)
+  const wallet = Math.max(1000, profT.wallet + origin.walletBonus)
+  const salary = profT.salary
+  const rent = origin.rentFree ? 0 : profT.rent
+  const hiddenLiquor = Math.min(10, 1 + Math.floor(rand() * 8) + (profT.liquorMod ?? 0))
 
   const chars = getCharacters(version)
   const npcs: Record<string, NpcState> = {}
@@ -47,7 +49,7 @@ export function newGame(version: Version, edu: EduId, seed?: number): GameState 
     npcs[c.id] = {
       id: c.id,
       stage: 'locked',
-      favor: 12 + (eduT.favorMod ?? 0), // 名媛社交光环:开局好感更高
+      favor: 12 + (profT.favorMod ?? 0), // 社交型职业光环:开局好感更高
       mood: rollMood(),
       topicIdx: 0,
       usedOpinions: [],
@@ -57,6 +59,7 @@ export function newGame(version: Version, edu: EduId, seed?: number): GameState 
       quirkTastes: q.tastes,
       quirkBans: q.bans,
       banHits: [],
+      pickiness: q.pickiness,
       flags: [],
       lastDay: 1,
       unread: false,
@@ -72,22 +75,23 @@ export function newGame(version: Version, edu: EduId, seed?: number): GameState 
     maxEnergy: origin.energy,
     mood: 60,
     origin: origin.id,
-    edu,
+    prof,
     hiddenLiquor,
-    rent: origin.rent,
+    rent,
+    rentDay: 4 + Math.floor(rand() * 9), // 随机房租日(第 4-12 天),当天收整月房租
     salary,
     skills: {
-      mouth: eduT.culture,
-      mind: eduT.culture,
-      culture: eduT.culture,
+      mouth: profT.culture,
+      mind: profT.culture,
+      culture: profT.culture,
       liquor: hiddenLiquor,
       image: imageFromWallet(wallet),
-      money: origin.id === 'rich' ? 8 : 3,
+      money: origin.id === 'rich' ? 8 : salary >= 30000 ? 6 : 3,
     },
     wallet,
     awkward: 0,
     npcs,
-    flags: getUnlockedCodes().map((c) => `code:${c}`),
+    flags: [...getUnlockedCodes().map((c) => `code:${c}`), `prof:${prof}`],
     opinionLog: {},
     stats: {
       spent: 0,
@@ -127,23 +131,29 @@ export interface SleepResult {
   decay: DecayNews[]
   eventId?: string
   gameOver: boolean
+  /** 今天是房租日:一次性收走的整月房租(0=不是房租日) */
+  rentCharged: number
+  /** 今早主动来找你的人(强制处理的邀约/消息) */
+  pingNpcId?: string
 }
 
 export function sleep(s: GameState): SleepResult {
-  const eduT = findEduTier(s.edu)
-  const cost = Math.round(s.rent / 30) + DAILY_FOOD
-  const bankrupt = chargeWallet(s, cost)
+  const profT = findProfession(s.prof)
 
   updateParallel(s)
   s.day += 1
+  // 日杂费天天有;跨入房租日的这天,整月房租一次性划走
+  const rentCharged = s.day === s.rentDay && s.rent > 0 ? s.rent : 0
+  const cost = DAILY_SUNDRY + rentCharged
+  const bankrupt = chargeWallet(s, cost)
   s.energy = s.maxEnergy
   s.luckyDay = false
-  s.awkward = Math.max(0, s.awkward - 25 - eduT.sleepAwkBonus)
+  s.awkward = Math.max(0, s.awkward - 25 - (profT.sleepAwkBonus ?? 0))
   moodDrift(s)
   if (s.mood <= 25) s.stats.lowMoodDays++ // 内耗天数(人物鉴定用)
 
   if (bankrupt || s.day > TOTAL_DAYS) {
-    return { cost, bankrupt, decay: [], gameOver: s.day > TOTAL_DAYS }
+    return { cost, bankrupt, decay: [], gameOver: !bankrupt && s.day > TOTAL_DAYS, rentCharged }
   }
 
   const decay = dailyDecay(s)
@@ -171,20 +181,35 @@ export function sleep(s: GameState): SleepResult {
       s.recentEvents = [...s.recentEvents, ev.id].slice(-3)
     }
   }
-  return { cost, bankrupt: false, decay, eventId, gameOver: false }
+  // 没抽中事件的早上:高好感的人可能主动来找你(约 2-3 天一次,必须处理)
+  let pingNpcId: string | undefined
+  if (!eventId && s.day >= 3 && s.day - (s.lastPingDay ?? 0) >= 2 && chance(0.45)) {
+    const candidates = Object.values(s.npcs).filter((n) => isAlive(n) && n.favor >= 25)
+    const t = weighted(candidates, (n) => n.favor)
+    if (t) {
+      pingNpcId = t.id
+      s.lastPingDay = s.day
+    }
+  }
+  return { cost, bankrupt: false, decay, eventId, gameOver: false, rentCharged, pingNpcId }
 }
 
-// ============ 行动:加班搬钱 ============
+// ============ 行动:上班搞钱(按职业抽工作事件,有赚有赔) ============
 export function doWork(s: GameState): string {
-  const gain = Math.round((s.salary / 22) * 1.5)
-  s.wallet += gain
+  const ev = weighted(getWorkEvents(s.prof), (e) => e.weight)!
+  if (ev.wallet >= 0) {
+    s.wallet += ev.wallet
+  } else {
+    chargeWallet(s, -ev.wallet) // 赔钱走统一扣款口,归零由 backToHub 判负
+  }
   spendEnergy(s, ENERGY_COST.work)
   s.stats.workCount++
-  bumpMood(s, -6) // 搞钱不是零成本:加班太多会内耗心情(喂给「气场」雪球的另一面)
+  bumpMood(s, ev.mood ?? -5) // 搞钱不是零成本:默认内耗心情,事件可加剧或回血
+  if (ev.awkward) s.awkward = Math.min(100, s.awkward + ev.awkward)
   for (const npc of Object.values(s.npcs)) {
     if (isAlive(npc) && npc.stage !== 'confirmed') npc.favor = Math.max(0, npc.favor - 2)
   }
-  return `加了一晚上班,加班费到手 ¥${gain}。所有人的消息都被你已读不回。`
+  return `${ev.text} 在聊的人的消息都被你晾了一晚。`
 }
 
 // ============ 聊天会话构建 ============
@@ -276,6 +301,7 @@ export function buildOpinionScript(q: OpinionQ, profile: CharacterProfile): Scri
     }
     return {
       text: o.text,
+      showIf: o.showIf,
       effects: {
         favor: isDeath ? 0 : isLove ? 9 : isHate ? -9 : 2,
         awkward: isHate ? 8 : 0,
@@ -288,6 +314,18 @@ export function buildOpinionScript(q: OpinionQ, profile: CharacterProfile): Scri
     }
   })
 
+  // 反应台词:优先用角色定制(opinionReacts),没配的落回通用
+  const reacts = profile.opinionReacts
+  const goodLine =
+    reacts?.good?.length
+      ? pick(reacts.good)
+      : pick(['我也是这么想的!你这个人有点东西。', '啊,终于有人跟我想的一样了。', '就是说!!(TA一连发来三个感叹号)'])
+  const badLine =
+    reacts?.bad?.length
+      ? pick(reacts.bad)
+      : pick(['……这样啊。', '嗯,每个人想法不一样吧。', '哈哈。(就俩字,还带句号)'])
+  const mehLine = reacts?.meh?.length ? pick(reacts.meh) : pick(['有道理。', '嗯嗯,懂你意思。', '也是哈。'])
+
   nodes.ask = {
     id: 'ask',
     lines: [{ who: 'npc', text: q.ask }],
@@ -296,7 +334,7 @@ export function buildOpinionScript(q: OpinionQ, profile: CharacterProfile): Scri
   nodes.good = {
     id: 'good',
     lines: [
-      { who: 'npc', text: pick(['我也是这么想的!你这个人有点东西。', '啊,终于有人跟我想的一样了。', '就是说!!(TA一连发来三个感叹号)']) },
+      { who: 'npc', text: goodLine },
       { who: 'nar', text: 'TA回消息的速度明显变快了。' },
     ],
     end: true,
@@ -304,14 +342,14 @@ export function buildOpinionScript(q: OpinionQ, profile: CharacterProfile): Scri
   nodes.bad = {
     id: 'bad',
     lines: [
-      { who: 'npc', text: pick(['……这样啊。', '嗯,每个人想法不一样吧。', '哈哈。(就俩字,还带句号)']) },
+      { who: 'npc', text: badLine },
       { who: 'nar', text: '空气突然安静。你盯着输入框,不知道怎么接。' },
     ],
     end: true,
   }
   nodes.meh = {
     id: 'meh',
-    lines: [{ who: 'npc', text: pick(['有道理。', '嗯嗯,懂你意思。', '也是哈。']) }],
+    lines: [{ who: 'npc', text: mehLine }],
     end: true,
   }
 
@@ -369,7 +407,8 @@ export function buildDateSession(s: GameState, profile: CharacterProfile, spot: 
   }
 
   const wrap = Object.values(sc.nodes).find((n) => n.end && n.id === 'wrap')
-  if (wrap && npc.stage !== 'confirmed' && npc.favor >= 65 && npc.dates >= 2) {
+  // 表白门槛下调(好感55+约过1次即可开口),提升角色结局触发率
+  if (wrap && npc.stage !== 'confirmed' && npc.favor >= 55 && npc.dates >= 1) {
     wrap.end = false
     wrap.choices = [
       { text: '趁今晚气氛正好,把那句话说出来', goto: 'cf_start' },
