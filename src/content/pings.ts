@@ -47,7 +47,7 @@ const VARIANTS: PingVariant[] = [
         nar('大清早的分享欲,是一种小心翼翼的靠近。'),
       ], {
         choices: [
-          { text: '回:它在等你。顺便等你手里的火腿肠', effects: { favor: 7 }, goto: 'warm' },
+          { text: '回:它在等你。顺便等你手里的火腿肠', effects: { favor: 7, tone: 'liao' }, goto: 'warm' },
           { text: '回:哈哈', effects: { favor: 1, saying: 'hhh' }, goto: 'meh' },
           ignoreChoice(-10),
         ],
@@ -113,7 +113,7 @@ const VARIANTS: PingVariant[] = [
         nar('「第一个想到你」——这六个字TA打了又删,最后还是发了。'),
       ], {
         choices: [
-          { text: '回:有空。几点?地址发我,我先去排队', effects: { favor: 9, npcFlags: ['tension'] }, danmaku: ['#win'], goto: 'yes' },
+          { text: '回:有空。几点?地址发我,我先去排队', effects: { favor: 9, tone: 'zhiqiu', npcFlags: ['tension'] }, danmaku: ['#win'], goto: 'yes' },
           { text: '坦白:今天真的累瘫了……但这顿我记下了,周末补上,我请', effects: { favor: 3 }, goto: 'later' },
           ignoreChoice(-12),
         ],

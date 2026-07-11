@@ -51,8 +51,12 @@ npm run check-story  # ★ 内容校验:任何剧情改动后必跑,抓断头节
   精力决定并聊上限1-4人,开局从全部12人自选;**钱归零任何时刻立即败北**
 - 属性映射(内容层检定 id 不变,引擎解析):mouth/mind/culture→文化水平;image→排面
   (由资产分档 imageFromWallet 实时决定,无行头);liquor→隐藏酒量(每局随机1-8+职业加成,UI永远显示???)
-- 对抗性(v4):每 NPC 隐藏挑剔度 pickiness(genQuirks 掷),applyEffects 对正好感暗骰降级
-  (减半/归零/偶尔-2,fb.pickyLine 旁白);打中 loves/高好感/锦鲤日显著降翻车率
+- 对抗性(v4.4 加深):每 NPC 隐藏挑剔度 pickiness(genQuirks 掷),applyEffects 对正好感暗骰
+  降级(45%减半/35%归零/20%差评-2~-4+社死,fb.pickyLine/毒旁白);打中 loves/高好感/锦鲤日
+  压低翻车率但**保底 8% 永不归零**——百分百对味也可能吃差评;
+- 语气轴(v4.4):Effects.tone('zhiqiu'直球真实/'liao'高情商会撩),人人可选不吃门槛;
+  NPC tonePref(v4.ts TONE_PREFS,吃直球11/吃会撩9/两可4)对上+4对错-3;玩家人设带可信度
+  加成(直男职业说直球+1,社交职业/社会大学说情话+1);表白两种方式也吃语气偏好
 - 主动邀约(v4):sleep 无事件的早上 45% 高好感 NPC 主动来找(content/pings.ts,约2-3天一次),
   强制处理;每个 ping 带「已读不回」选项→hiddenFavor 暗扣(不上浮动数字)
 - v4 内容集中扩展在 content/v4.ts(EXTRA_SPOTS/EXTRA_TOPICS/OPINION_REACTS),由 content/index.ts

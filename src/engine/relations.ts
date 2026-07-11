@@ -94,6 +94,20 @@ const PICKY_LINES = [
   'TA似乎在忙别的,回复敷衍得像自动回复。',
 ]
 
+/** 差评旁白(挑剔暗骰最重的一档):百分百对味也可能翻车,这就是北京 */
+const PICKY_NEG_LINES = [
+  'TA盯着这句话看了两秒,回了个「呵呵」。你哪里得罪了TA?不知道。这就是北京。',
+  '不知道踩中了什么开关,TA忽然觉得你这句话……有点油。',
+  '这句话TA昨天大概会喜欢。今天不行,今天TA就是烦这种话。',
+  'TA把你这句话截了图。你不知道发给了谁,也不知道配了什么文。',
+  '「你是不是跟谁都这么说?」TA忽然来了这么一句。你百口莫辩。',
+]
+
+/** 玩家人设的语气可信度:这些职业说直球有「真实感」加成 */
+const ZHIQIU_PROFS = ['waimai', 'zhuangxiu', 'siji', 'chengxuyuan', 'guoqi', 'hushi']
+/** 这些职业说情话自带「专业感」加成 */
+const LIAO_PROFS = ['jiaolian', 'meijia', 'kongjie', 'xinmeiti', 'naicha']
+
 const aliveStages = ['chatting', 'dating', 'confirmed']
 
 export function isAlive(n: NpcState) {
@@ -167,27 +181,44 @@ export function applyEffects(
     if (profile.stylePref === fx.style) favor += 4
     else if (profile.stylePref) favor -= 3
   }
+  // 语气博弈:直球真实 vs 高情商会撩(人人可选),对上 TA 的吃法加分,对错减分;
+  // 你的人设还带可信度加成——直男职业说直球更「真」,社交职业/社会大学说情话更「顺」
+  if (npc && profile && fx.tone) {
+    if (profile.tonePref === fx.tone) favor += 4
+    else if (profile.tonePref) favor -= 3
+    if (fx.tone === 'zhiqiu' && ZHIQIU_PROFS.includes(s.prof)) favor += 1
+    if (fx.tone === 'liao' && (LIAO_PROFS.includes(s.prof) || s.edu === 'shehui')) favor += 1
+  }
   // 被动契合:你的教育背景风格正好是 TA 吃的那一套,正向互动小加成
   const myStyle = s.edu === 'gaozhi' ? 'frame' : s.edu === 'shehui' ? 'flatter' : null
   if (npc && profile && myStyle && profile.stylePref === myStyle && favor > 0) favor += 1
 
   // 挑剔暗骰:说对了的话也不一定被接住(对抗性)。
-  // 挑剔度打底,TA 状态差时更难哄;打到人设(loves 命中)/好感已高/锦鲤日显著降低翻车率。
+  // 挑剔度打底,TA 状态差时更难哄;打到人设/高好感/锦鲤日能压低翻车率,
+  // 但有 8% 的保底不确定性——百分百对味也可能吃差评,人心没有满分答案。
   if (npc && favor >= 4) {
-    let p = (npc.pickiness ?? 0.3) * 0.5
-    if (npc.mood === 'grumpy') p += 0.15
-    else if (npc.mood === 'hungover') p += 0.1
-    else if (npc.mood === 'great') p -= 0.12
-    if (fx.opinion?.tags.some((t) => profile?.loves.includes(t))) p -= 0.12
-    if (fx.care) p -= 0.08
-    if (npc.favor >= 60) p -= 0.08
-    if (s.luckyDay) p -= 0.1
-    p = Math.max(0, Math.min(0.45, p))
+    let p = 0.06 + (npc.pickiness ?? 0.3) * 0.6
+    if (npc.mood === 'grumpy') p += 0.18
+    else if (npc.mood === 'hungover') p += 0.12
+    else if (npc.mood === 'great') p -= 0.1
+    if (fx.opinion?.tags.some((t) => profile?.loves.includes(t))) p -= 0.1
+    if (fx.care) p -= 0.06
+    if (npc.favor >= 60) p -= 0.06
+    if (s.luckyDay) p -= 0.08
+    p = Math.max(0.08, Math.min(0.5, p))
     if (chance(p)) {
-      // 命中:收益减半或归零;极端挑剔时甚至倒扣一点
       const roll = rand()
-      favor = roll < 0.5 ? Math.floor(favor / 2) : roll < 0.9 ? 0 : -2
-      fb.pickyLine = pick(PICKY_LINES)
+      if (roll < 0.45) {
+        favor = Math.floor(favor / 2) // 打折:接住了一半
+        fb.pickyLine = pick(PICKY_LINES)
+      } else if (roll < 0.8) {
+        favor = 0 // 落空:这句白说了
+        fb.pickyLine = pick(PICKY_LINES)
+      } else {
+        favor = -(2 + Math.floor(rand() * 3)) // 差评:-2 ~ -4,还有点社死
+        s.awkward = Math.min(100, s.awkward + 3)
+        fb.pickyLine = pick(PICKY_NEG_LINES)
+      }
     }
   }
 

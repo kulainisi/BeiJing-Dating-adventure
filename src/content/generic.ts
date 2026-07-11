@@ -45,7 +45,7 @@ export const GENERIC_CHATS: Script[] = [
   chat('g_emo', [
     node('a', [npc('凌晨的北京好安静啊。有时候会突然不知道自己留在这里图什么。')], {
       choices: [
-        { text: '认真打一大段:图什么不重要,你已经比大多数人勇敢了', effects: { favor: 6, care: true }, danmaku: ['#simp'], goto: 'b' },
+        { text: '认真打一大段:图什么不重要,你已经比大多数人勇敢了', effects: { favor: 6, care: true, tone: 'zhiqiu' }, danmaku: ['#simp'], goto: 'b' },
         { text: '回:图工资啊,还能图什么(配狗头)', effects: { favor: 1 }, goto: 'c' },
         { text: '回:早点睡,别想那么多', effects: { favor: -2, saying: 'zaoshui' }, goto: 'c' },
       ],
@@ -58,12 +58,14 @@ export const GENERIC_CHATS: Script[] = [
       choices: [
         { text: '回:一样,躺到愧疚,愧疚到继续躺', effects: { favor: 4 }, goto: 'b' },
         { text: '回:健身、看展、学习。时间不能浪费', effects: { favor: 2 }, goto: 'c' },
-        { text: '回:下个周末别躺了,出来,我带你玩点新鲜的', effects: { favor: 5 }, goto: 'd' },
+        { text: '回:下个周末别躺了,出来,我带你玩点新鲜的', effects: { favor: 5, tone: 'liao' }, goto: 'd' },
+        { text: '回:说实话,我周末挺无聊的。你要不要出来?我想见你', effects: { favor: 5, tone: 'zhiqiu' }, goto: 'e' },
       ],
     }),
     node('b', [npc('哈哈哈哈是同一款废物没错了。莫名安心。')], { end: true }),
     node('c', [npc('好自律……跟你比我像个废人。'), nar('TA的语气里有敬佩,也有一丝距离感。')], { end: true }),
     node('d', [npc('哦?口气不小,那我等着。')], { end: true }),
+    node('e', [npc('……这么直接的吗。'), nar('「对方正在输入」持续了很久,最后只回来一个字:「好。」')], { end: true }),
   ]),
   chat('g_jiafang', [
     node('a', [npc('甲方第八次改需求了,原话:「要五彩斑斓的黑,但要低调」。我现在血压180。')], {
@@ -196,7 +198,7 @@ export const GENERIC_CHATS: Script[] = [
     node('a', [npc('加完班,写字楼电梯里只有我一个人。镜子里那张脸憔悴得我都想给它转五十块钱。')], {
       choices: [
         { text: '回:转一百吧,里面那位还欠着房租呢', effects: { favor: 6 }, goto: 'b' },
-        { text: '回:发我看看?我帮你确认一下,顺便看看你', effects: { favor: 7 }, danmaku: ['#smart'], goto: 'c' },
+        { text: '回:发我看看?我帮你确认一下,顺便看看你', effects: { favor: 7, tone: 'liao' }, danmaku: ['#smart'], goto: 'c' },
         { text: '回:注意休息,身体是自己的', effects: { favor: -1, saying: 'water' }, goto: 'd' },
       ],
     }),
@@ -215,7 +217,7 @@ export const SPICY_CHATS: Script[] = [
       nar('屏幕的光落在你脸上。这个问题像一杯温过的酒。'),
     ], {
       choices: [
-        { text: '回:算「都不舍得先说晚安」的关系', effects: { favor: 10, npcFlags: ['tension'] }, danmaku: ['#win'], goto: 'b' },
+        { text: '回:算「都不舍得先说晚安」的关系', effects: { favor: 10, tone: 'liao', npcFlags: ['tension'] }, danmaku: ['#win'], goto: 'b' },
         { text: '回:算失眠互助小组,组长是你', effects: { favor: 5 }, goto: 'c' },
         { text: '回:算该睡觉的关系。晚安,早点睡', effects: { favor: -2, saying: 'zaoshui' }, goto: 'd' },
       ],
@@ -247,7 +249,7 @@ export const SPICY_CHATS: Script[] = [
       npc('「就问衣服,别多想。」'),
     ], {
       choices: [
-        { text: '回:衣服好看。但「别多想」这三个字,让我多想了', effects: { favor: 10, npcFlags: ['tension'] }, danmaku: ['#smart'], goto: 'b' },
+        { text: '回:衣服好看。但「别多想」这三个字,让我多想了', effects: { favor: 10, tone: 'liao', npcFlags: ['tension'] }, danmaku: ['#smart'], goto: 'b' },
         { text: '认真评价衣服的版型和颜色,专业得像个买手', effects: { favor: 6 }, goto: 'c' },
         { text: '回:就这?看不清,建议拍全身', effects: { favor: -5 }, goto: 'd' },
       ],
@@ -262,7 +264,7 @@ export const SPICY_CHATS: Script[] = [
       npc('我说「一个朋友」。说完自己愣了一下,觉得这三个字有点亏。'),
     ], {
       choices: [
-        { text: '回:那下次改口成「我的人」,试试亏不亏', effects: { favor: 11, npcFlags: ['tension'] }, danmaku: ['#win'], goto: 'b' },
+        { text: '回:那下次改口成「我的人」,试试亏不亏', effects: { favor: 11, tone: 'liao', npcFlags: ['tension'] }, danmaku: ['#win'], goto: 'b' },
         { text: '回:那你觉得,叫什么不亏?', effects: { favor: 8 }, goto: 'c' },
         { text: '回:朋友挺好的呀,朋友最长久了', effects: { favor: -6 }, goto: 'd' },
       ],

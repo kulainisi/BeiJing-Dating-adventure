@@ -1,4 +1,4 @@
-import { DateSpot, Script, StyleId } from '@/engine/types'
+import { DateSpot, Script, StyleId, ToneId } from '@/engine/types'
 import { chat, nar, node, npc } from './util'
 
 /**
@@ -132,6 +132,34 @@ export const EXTRA_SPOTS: Record<string, DateSpot[]> = {
     { template: 'park', location: '公园走位教学', price: 35, label: '走位教学(横店同款)' },
     { template: 'jubensha', location: '影视城实景剧本杀包场', price: 4800, label: '实景包场(给他当一天主角)', minWallet: 50000 },
   ],
+}
+
+// ============ 语气偏好(zhiqiu=吃直球真实 / liao=吃高情商会撩 / 不配=两可) ============
+export const TONE_PREFS: Record<string, ToneId> = {
+  // —— 男版 ——
+  jingjing: 'zhiqiu', // 大妞最烦装,有话直说
+  yutong: 'zhiqiu', // 相亲话术听吐了,真实是稀缺品
+  linyi: 'zhiqiu', // 医生没时间猜哑谜
+  xiaoman: 'zhiqiu', // 文艺女要真,不要技巧
+  vv: 'zhiqiu', // 油腻是原罪
+  nana: 'liao', // 酒桌女王,接得住招才有意思
+  coco: 'liao', // 游戏规则玩家,吃高段位的来回
+  cici: 'liao', // 博主吃情绪价值
+  luna: 'liao', // 追星女吃苏感
+  beibei: 'liao', // 猎人欣赏猎人的手法
+  // linda/xiaolu:两可(看效果不看路数)
+  // —— 女版 ——
+  ligong: 'zhiqiu', // 工程师:直说,别绕
+  dayong: 'zhiqiu', // 憨直的人只信直话
+  zhouzheng: 'zhiqiu', // 体制内,踏实为上
+  erhuange: 'zhiqiu', // 爷阅人无数,套路一眼穿
+  guyi: 'zhiqiu', // 演员见惯了演的,吃真的
+  laopao: 'zhiqiu', // 摇滚老炮,虚的滚
+  kevin: 'liao', // 销售之王,同行的手法他鉴赏
+  laomo: 'liao', // 制片人吃会说话的
+  henry: 'liao', // 精英社交场,谈吐即名片
+  abao: 'liao', // 夜场的人,吃氛围感
+  // alex/chenyu:两可
 }
 
 // ============ 金钱观(love=吃排场 / hate=反感烧钱 / 不配=中立) ============

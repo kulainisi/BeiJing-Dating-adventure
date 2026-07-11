@@ -318,6 +318,7 @@ export function buildOpinionScript(q: OpinionQ, profile: CharacterProfile): Scri
       effects: {
         favor: isDeath ? 0 : isLove ? 9 : isHate ? -9 : 2,
         style: o.style,
+        tone: o.tone,
         awkward: isHate ? 8 : 0,
         mine: isHate,
         saying: o.saying,
@@ -593,10 +594,12 @@ function confirmNodes(profile: CharacterProfile): Record<string, NodeDef> {
       choices: [
         {
           text: '直视TA的眼睛,等一个答案',
+          effects: { tone: 'zhiqiu' },
           check: { skill: 'mouth', dc: 12, pass: 'cf_yes', fail: 'cf_no', crit: 'cf_yes', fumble: 'cf_oops' },
         },
         {
           text: '掏出手机,翻出你备忘录里没敢发的那段话给TA看',
+          effects: { tone: 'liao' },
           check: { skill: 'mind', dc: 10, pass: 'cf_yes', fail: 'cf_no', fumble: 'cf_oops' },
           danmaku: ['#simp'],
         },

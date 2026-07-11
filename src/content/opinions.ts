@@ -86,7 +86,7 @@ export const OPINIONS: OpinionQ[] = [
     options: [
       { text: '回:信!i人e人真的很准,你一看就是脆皮i人', tags: ['romantic'] },
       { text: '回:统计学都不算,巴纳姆效应罢了', tags: ['practical', 'zhi'] },
-      { text: '回:你信我就信,今天我的上升星座是你', tags: ['romantic', 'flex'] },
+      { text: '回:你信我就信,今天我的上升星座是你', tags: ['romantic', 'flex'], tone: 'liao' },
       { text: '回:比起星座,我更信八字,要不要合一下?', tags: ['trad'] },
       {
         text: '学理拆解:MBTI的信效度确实有争议,但作为社交语言它很好用——分类是人类认知的脚手架',

@@ -10,7 +10,7 @@ export { CODES } from './shared'
 export { getWorkEvents } from './work'
 export { buildPing } from './pings'
 export { buildCouplePing } from './couple'
-import { EXTRA_SPOTS, EXTRA_TOPICS, MONEY_VIEWS, OPINION_REACTS, STYLE_PREFS } from './v4'
+import { EXTRA_SPOTS, EXTRA_TOPICS, MONEY_VIEWS, OPINION_REACTS, STYLE_PREFS, TONE_PREFS } from './v4'
 export { getEndings, getAllEndings, findEnding } from './endings'
 export { DANMAKU, resolveDanmaku } from './comments'
 export { findEvent }
@@ -26,6 +26,7 @@ function withV4(chars: CharacterProfile[]): CharacterProfile[] {
     opinionReacts: OPINION_REACTS[c.id] ?? c.opinionReacts,
     stylePref: STYLE_PREFS[c.id] ?? c.stylePref,
     moneyView: MONEY_VIEWS[c.id] ?? c.moneyView,
+    tonePref: TONE_PREFS[c.id] ?? c.tonePref,
   }))
 }
 

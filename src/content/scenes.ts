@@ -97,7 +97,7 @@ const bar: DateTemplate = (p, n, s, spot) => {
       npc('「说真的,你在北京这几年,最难的时候是什么样?」'),
     ], {
       choices: [
-        { text: '讲了那个你从没跟人讲过的冬天', effects: { favor: 10, npcFlags: ['deep_talk'] }, danmaku: ['#simp'], goto: 'r2_deep' },
+        { text: '讲了那个你从没跟人讲过的冬天', effects: { favor: 10, tone: 'zhiqiu', npcFlags: ['deep_talk'] }, danmaku: ['#simp'], goto: 'r2_deep' },
         { text: '轻描淡写地岔开:都过去了,喝酒喝酒', effects: { favor: 1 }, goto: 'r2_light' },
         {
           text: '反手举杯:先干为敬,干了我就说',
@@ -226,7 +226,7 @@ const dinner: DateTemplate = (p, n, s, spot) => {
           check: { skill: 'mind', dc: 12, pass: 'talk_smart', fail: 'talk_plain' },
         },
         { text: '老实回答:有人约才动,人是社会性动物', effects: { favor: 3 }, goto: 'talk_plain2' },
-        { text: '反问:怎么,你是想约我下周末?', effects: { favor: 6 }, danmaku: ['#smart'], goto: 'talk_flirt' },
+        { text: '反问:怎么,你是想约我下周末?', effects: { favor: 6, tone: 'liao' }, danmaku: ['#smart'], goto: 'talk_flirt' },
         {
           text: '结构化作答:我周末分三块——运动、输入、留白。留白那块,最近想留给一个人',
           showIf: 'edu:gaozhi',

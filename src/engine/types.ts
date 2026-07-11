@@ -21,6 +21,8 @@ export type OriginId = 'normal' | 'rich' | 'energetic' | 'laobj' | 'haigui' | 'c
 export type EduId = 'gaozhi' | 'putong' | 'shehui'
 /** 说话风格:框架感(高教育)/ 谄媚会来事(社会大学);NPC 各有偏好 */
 export type StyleId = 'frame' | 'flatter'
+/** 语气轴(人人可选,不吃教育门槛):直球真实(没套路的直男感)vs 高情商会撩;NPC 各有吃法 */
+export type ToneId = 'zhiqiu' | 'liao'
 export type ProfId =
   | 'waimai'
   | 'zhuangxiu'
@@ -436,6 +438,8 @@ export interface Effects {
   favor?: number
   /** 说话风格标记(框架/谄媚):引擎按 NPC 的 stylePref 加减分(对上+4/对错-3) */
   style?: StyleId
+  /** 语气标记(直球/会撩):引擎按 NPC 的 tonePref 加减分;你的职业/背景还带真实感加成 */
+  tone?: ToneId
   /** 隐藏好感变动:不显示浮动数字、不触发里程碑(已读不回等冷暴力用) */
   hiddenFavor?: number
   /** 玩家心情变动(暗值) */
@@ -498,6 +502,8 @@ export interface OpinionOption {
   showIf?: string
   /** 说话风格标记(框架/谄媚),引擎按 NPC 偏好加减分 */
   style?: StyleId
+  /** 语气标记(直球/会撩),引擎按 NPC 偏好加减分 */
+  tone?: ToneId
 }
 
 export interface OpinionQ {
@@ -547,6 +553,8 @@ export interface CharacterProfile {
   stylePref?: StyleId
   /** 金钱观:love=吃排场(贵局加分/便宜局扣),hate=反感烧钱(贵局扣/便宜局加);不配=中立 */
   moneyView?: 'love' | 'hate'
+  /** 语气偏好:zhiqiu=吃直球真实(没套路才可信),liao=吃高情商会撩;不配=两可 */
+  tonePref?: ToneId
 }
 
 // ============ 运行时状态 ============
