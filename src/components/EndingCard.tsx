@@ -148,7 +148,7 @@ export function EndingCard({ ending, state, npcName, detail, newAchievements, on
     g.fillText('📱 扫码进入游戏,来北京Dating', 360, qy + qsize + 46)
     g.fillStyle = '#5b6b80'
     g.font = '19px sans-serif'
-    g.fillText('《北京Dating模拟器》v3 · 一款人均社死的恋爱冒险', 360, qy + qsize + 78)
+    g.fillText('《北京Dating模拟器》v4 · 一款人均社死的恋爱冒险', 360, qy + qsize + 78)
 
     // ===== 按实际内容裁切 =====
     const finalH = qy + qsize + 78 + 34

@@ -165,7 +165,7 @@ export function Home({
           <div style={{ fontSize: 58 }}>💘</div>
           <h1 style={{ fontSize: 30, fontWeight: 900, marginTop: 8, letterSpacing: 1 }}>
             北京<span style={{ color: 'var(--accent)' }}>Dating</span>模拟器
-            <sup style={{ fontSize: 13, color: 'var(--accent2)', marginLeft: 4 }}>v3</sup>
+            <sup style={{ fontSize: 13, color: 'var(--accent2)', marginLeft: 4 }}>v4</sup>
           </h1>
           <p style={{ color: 'var(--text-dim)', fontSize: 13.5, marginTop: 8, lineHeight: 1.8 }}>
             14天 · 一整池北京男女 · 一张随时会塌的关系网
@@ -173,7 +173,7 @@ export function Home({
             一款人均社死的恋爱冒险游戏
           </p>
           <div style={{ color: 'var(--text-faint)', fontSize: 11, marginTop: 6, letterSpacing: 1 }}>
-            v3 · 260709
+            v4 · 260711
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 40 }}>

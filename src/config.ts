@@ -5,7 +5,7 @@ export const SITE_URL = 'https://beijing-dating-adventure.pages.dev'
 const PROD_HOST = 'beijing-dating-adventure.pages.dev'
 
 /** 版本号,附在分享链接上破除浏览器缓存,保证扫码总是加载最新版 */
-export const APP_VERSION = '3'
+export const APP_VERSION = '4'
 
 /**
  * 分享/二维码链接:永远指向稳定正式域名。
