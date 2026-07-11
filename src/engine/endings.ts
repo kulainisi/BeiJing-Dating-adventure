@@ -1,7 +1,7 @@
 import { chance } from './rng'
 import { confirmedList, isAlive } from './relations'
 import { marriageEligible } from './game'
-import { EndingResult, GameState } from './types'
+import { EndingResult, GameState, NpcState } from './types'
 import { getCharacters } from '@/content'
 
 /** 第 14 天结束后的结算矩阵(即时结局在 applyEffects / 事件里直接触发,不走这里) */
@@ -50,6 +50,33 @@ export function settle(s: GameState): EndingResult {
     return { id: 'ambiguous', npcId: best.id }
   }
   return { id: 'readnoreply' }
+}
+
+/**
+ * 提前收官(北京节奏):确立关系后再互动 ≥4 次、好感 ≥80,即可主动「把日子定下来」,
+ * 不必熬到第 14 天。结算逻辑与 settle 的确立分支一致(婚姻骰/真爱HE/普通HE)。
+ */
+export const EARLY_SETTLE_ACTS = 4
+
+export function earlySettleTarget(s: GameState): NpcState | null {
+  const t = Object.values(s.npcs).find(
+    (n) => n.stage === 'confirmed' && (n.confirmedActs ?? 0) >= EARLY_SETTLE_ACTS && n.favor >= 80,
+  )
+  return t ?? null
+}
+
+export function earlySettle(s: GameState, npc: NpcState): EndingResult {
+  const profile = getCharacters(s.version).find((c) => c.id === npc.id)!
+  if (marriageEligible(s, profile) && chance(0.2)) {
+    return { id: 'marriage', npcId: npc.id }
+  }
+  if (npc.flags.includes(profile.trueFlag)) {
+    const stayed = npc.flags.includes('stayed')
+    if (!stayed || npc.favor >= 85 || profile.id === 'coco') {
+      return { id: `true_${npc.id}`, npcId: npc.id }
+    }
+  }
+  return { id: `he_${npc.id}`, npcId: npc.id }
 }
 
 /** 主动拉黑人数达到「孤寡认证」的门槛(半个池子) */

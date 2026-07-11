@@ -565,6 +565,8 @@ export interface NpcState {
   banHits: string[]
   /** 隐藏挑剔度 0-1:对「说对了的话」也可能不买账(对抗性暗骰),不展示 */
   pickiness: number
+  /** 确立关系后与TA的互动次数(聊天/约会/情侣事件)——攒够即可提前迎来结局(北京节奏) */
+  confirmedActs?: number
   flags: string[]
   blockReason?: string
   lastDay: number

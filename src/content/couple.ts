@@ -56,7 +56,7 @@ const COUPLE_VARIANTS: CoupleVariant[] = [
   // 🍻 见TA死党(考核局)
   {
     id: 'bestie',
-    ok: () => true,
+    ok: (n) => n.stage === 'confirmed',
     build: () => [
       node('a', [
         npc('「周六空着!我死党说要「审核」你,饭我订好了。」'),
@@ -92,7 +92,7 @@ const COUPLE_VARIANTS: CoupleVariant[] = [
   // 🎂 纪念日
   {
     id: 'anniversary',
-    ok: (n) => n.dates >= 2,
+    ok: (n) => n.stage === 'confirmed' && n.dates >= 2,
     build: () => [
       node('a', [
         npc('「问你哦。」'),
@@ -146,7 +146,7 @@ const COUPLE_VARIANTS: CoupleVariant[] = [
   // 📹 TA妈的视频电话
   {
     id: 'mom_video',
-    ok: (n) => n.favor >= 75,
+    ok: (n) => n.stage === 'confirmed' && n.favor >= 75,
     build: () => [
       node('a', [
         nar('你们窝在沙发上看剧,TA的手机突然响了——视频电话,备注:妈。'),
@@ -196,21 +196,35 @@ const COUPLE_VARIANTS: CoupleVariant[] = [
   },
 ]
 
-/** 情侣专属 ping(确立关系后,替代普通 ping) */
+/** 情侣/准情侣专属 ping(官宣后全量解锁;暧昧到位也能提前触发一部分——北京节奏) */
 export function buildCouplePing(n: NpcState, profile: CharacterProfile): Script {
   const pool = COUPLE_VARIANTS.filter((v) => v.ok(n) && !n.flags.includes(`cp_done_${v.id}`))
-  const v = pool.length > 0 ? pick(pool) : pick(COUPLE_VARIANTS)
+  const v = pool.length > 0 ? pick(pool) : pick(COUPLE_VARIANTS.filter((x) => x.ok(n)).length ? COUPLE_VARIANTS.filter((x) => x.ok(n)) : COUPLE_VARIANTS)
   n.flags.push(`cp_done_${v.id}`) // 每个情侣事件每人只出一次,保持新鲜
   const nodes = v.build(profile)
-  nodes[0].lines.unshift(nar(`❤️ ${profile.name}(你的官方对象)发来消息。`))
+  nodes[0].lines.unshift(
+    nar(
+      n.stage === 'confirmed'
+        ? `❤️ ${profile.name}(你的官方对象)发来消息。`
+        : `💗 ${profile.name}发来消息——你们还没官宣,但这条消息的口气,已经不太「朋友」了。`,
+    ),
+  )
   const sc = chat(`cping_${v.id}_${profile.id}`, nodes)
   sc.npcId = profile.id
   return sc
 }
 
-// ============ 吃醋保卫战(随机事件,确立后触发) ============
+// ============ 吃醋保卫战(随机事件;前任回头在暧昧期就可能上演——北京节奏) ============
 function confirmedPartner(s: GameState): NpcState | undefined {
   return Object.values(s.npcs).find((n) => n.stage === 'confirmed')
+}
+
+/** 保卫战对象:官方对象优先;没有官宣但暧昧到位(dating 好感≥65)的也算 */
+function guardTarget(s: GameState): NpcState | undefined {
+  return (
+    confirmedPartner(s) ??
+    Object.values(s.npcs).find((n) => n.stage === 'dating' && n.favor >= 65)
+  )
 }
 
 export const GUARD_EVENTS: RandomEventDef[] = [
@@ -218,10 +232,10 @@ export const GUARD_EVENTS: RandomEventDef[] = [
   {
     id: 'ex_return',
     once: true,
-    eligible: (s) => !!confirmedPartner(s) && s.day >= 6,
+    eligible: (s) => !!guardTarget(s) && s.day >= 6,
     weight: () => 13,
     build: (s) => {
-      const partner = confirmedPartner(s)
+      const partner = guardTarget(s)
       if (!partner) return null
       const sc = eventScript('ev_exreturn', '前任回头', 'bar', [
         node('a', [

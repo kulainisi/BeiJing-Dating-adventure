@@ -30,7 +30,7 @@ import {
 import { chance } from '@/engine/rng'
 import { applyEffects, blockNpc, fateRoll, isAlive, refillPool, relationTier } from '@/engine/relations'
 import { bumpMood, moodAura, moodDepressed, moodExtremeRoll, moodHint } from '@/engine/mood'
-import { checkAllBlocked, checkComboEnding, settle } from '@/engine/endings'
+import { checkAllBlocked, checkComboEnding, earlySettle, earlySettleTarget, settle } from '@/engine/endings'
 import { performCheck } from '@/engine/checks'
 import { pick, seedRng } from '@/engine/rng'
 import { addDeath, addRun, clearRun, saveRun, unlockAchievements, unlockEnding } from '@/engine/save'
@@ -93,6 +93,7 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
   const [toast, setToast] = useState('')
   const [favorFloat, setFavorFloat] = useState<{ id: number; text: string; good: boolean } | null>(null)
   const [armFeast, setArmFeast] = useState(false)
+  const [armSettle, setArmSettle] = useState(false)
   const [celebration, setCelebration] = useState<{ kind: 'good' | 'bad' | 'achieve'; title: string; sub: string } | null>(null)
   const pendingEnding = useRef<{ id: string; npcId?: string; detail?: string } | null>(null)
   const toastTimer = useRef<number>(0)
@@ -229,7 +230,9 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
       const profile = getCharacter(s.version, r.pingNpcId)
       const npcSt = s.npcs[r.pingNpcId]
       touchNpc(s, r.pingNpcId)
-      const sc = npcSt.stage === 'confirmed' ? buildCouplePing(npcSt, profile) : buildPing(npcSt, profile)
+      // 北京节奏:暧昧到位(dating 且好感≥60)就开始有「准情侣」剧情,不必等官宣
+      const coupleMode = npcSt.stage === 'confirmed' || (npcSt.stage === 'dating' && npcSt.favor >= 60)
+      const sc = coupleMode ? buildCouplePing(npcSt, profile) : buildPing(npcSt, profile)
       saveRun(s)
       setPhase({ t: 'session', sess: { script: sc, npcId: r.pingNpcId, type: 'event' } })
       force()
@@ -261,6 +264,12 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
   function finishSession(sess: Session) {
     let ended = pendingEnding.current
     pendingEnding.current = null
+
+    // 确立关系后的互动计数(聊天/约会/情侣事件都算)——攒够 4 次可提前收官
+    if (sess.npcId) {
+      const st = s.npcs[sess.npcId]
+      if (st?.stage === 'confirmed') st.confirmedActs = (st.confirmedActs ?? 0) + 1
+    }
 
     if (sess.npcId && sess.type !== 'event') {
       touchNpc(s, sess.npcId)
@@ -414,6 +423,20 @@ export function Game({ initial, onExit }: { initial: GameState; onExit: () => vo
           s={s}
           chars={chars}
           armFeast={armFeast}
+          armSettle={armSettle}
+          onSettleLove={() => {
+            const target = earlySettleTarget(s)
+            if (!target) return
+            if (!armSettle) {
+              setArmSettle(true)
+              const nm = getCharacter(s.version, target.id).name
+              showToast(`确定吗?和${nm}把日子定下来,这一局就到这了。再点一次确认收官。`)
+              window.setTimeout(() => setArmSettle(false), 4500)
+            } else {
+              const res = earlySettle(s, target)
+              endGame(res.id, res.npcId)
+            }
+          }}
           onChat={() => setPhase({ t: 'list', mode: 'chat' })}
           onDate={() => setPhase({ t: 'list', mode: 'date' })}
           onWork={() => {
@@ -500,6 +523,8 @@ function Hub({
   s,
   chars,
   armFeast,
+  armSettle,
+  onSettleLove,
   onChat,
   onDate,
   onWork,
@@ -510,6 +535,8 @@ function Hub({
   s: GameState
   chars: CharacterProfile[]
   armFeast: boolean
+  armSettle: boolean
+  onSettleLove: () => void
   onChat: () => void
   onDate: () => void
   onWork: () => void
@@ -521,6 +548,8 @@ function Hub({
   const unread = chars.filter((c) => isAlive(s.npcs[c.id]) && s.npcs[c.id].unread).length
   const origin = ORIGINS.find((o) => o.id === s.origin)!
   const profT = findProfession(s.prof)
+  const settleTarget = earlySettleTarget(s)
+  const settleName = settleTarget ? chars.find((c) => c.id === settleTarget.id)?.name : null
   const hint = moodHint(s)
   const rentPending = s.rent > 0 && s.rentDay > 0 && s.day < s.rentDay
   const actions: { emoji: string; title: string; desc: string; cost: number; onClick: () => void }[] = [
@@ -591,6 +620,15 @@ function Hub({
         {s.day >= 8 && (
           <button className="btn" style={{ borderColor: 'rgba(255,184,77,.4)', padding: '10px 14px' }} onClick={onFeast}>
             🍽️ {armFeast ? '再点一次:确认退出所有暧昧' : '不玩了,自己去吃顿好的'}
+          </button>
+        )}
+        {settleTarget && (
+          <button
+            className="btn"
+            style={{ borderColor: 'rgba(255,93,143,.5)', padding: '10px 14px' }}
+            onClick={onSettleLove}
+          >
+            ❤️ {armSettle ? '再点一次:确认收官' : `和${settleName}把日子定下来(迎来结局)`}
           </button>
         )}
         <button

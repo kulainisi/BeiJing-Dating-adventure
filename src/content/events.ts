@@ -637,18 +637,17 @@ const EVENTS: RandomEventDef[] = [
 ]
 
 // 🏠 同居邀请(共有事件):确立关系+高好感后,低概率触发
+const cohabitOk = (n: NpcState) =>
+  (n.stage === 'confirmed' || n.stage === 'dating') && n.favor >= 75 && n.dates >= 2
+
 const cohabitEvent: RandomEventDef = {
   id: 'cohabit',
   once: true,
-  eligible: (s) =>
-    !s.flags.includes('cohabiting') &&
-    s.day >= 6 &&
-    Object.values(s.npcs).some((n) => n.stage === 'confirmed' && n.favor >= 80 && n.dates >= 3),
-  weight: () => 7,
+  // 北京节奏:不必等官宣,暧昧到位(好感75+约过2次)也可能直接递钥匙
+  eligible: (s) => !s.flags.includes('cohabiting') && s.day >= 5 && Object.values(s.npcs).some(cohabitOk),
+  weight: () => 8,
   build: (s) => {
-    const partner = Object.values(s.npcs).find(
-      (n) => n.stage === 'confirmed' && n.favor >= 80 && n.dates >= 3,
-    )
+    const partner = Object.values(s.npcs).find(cohabitOk)
     if (!partner) return null
     const pn = nameOf(s, partner.id)
     const sc = eventScript('ev_cohabit', '一把钥匙', 'walk', [

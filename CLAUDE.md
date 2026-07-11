@@ -40,6 +40,11 @@ npm run check-story  # ★ 内容校验:任何剧情改动后必跑,抓断头节
 - 恋爱后内容(v4.2):确立后 ping 优先走 content/couple.ts 情侣池(吵架和好/见死党/纪念日/家宴/
   TA妈视频/深夜奔赴,cp_* npcFlags 每人每事件一次)+吃醋保卫战事件(ex_return/rival_suitor)
   +6 个 cp_* 驱动的恋爱后成就;
+- 快节奏收官(v4.3,北京节奏):确立后与TA互动计数 NpcState.confirmedActs(聊天/约会/情侣事件
+  均+1,finishSession 统计),≥4 次且好感≥80 → hub 出现「把日子定下来」按钮(二次确认),
+  earlySettle 提前迎来 HE/真爱HE/婚姻骰,不必熬到第14天;暧昧期下放:dating 好感≥60 走情侣
+  ping 池(bestie/anniversary/mom_video 仍官宣限定)、好感≥75+约2次可触发同居、
+  好感≥65 可触发 ex_return 保卫战;
 - ⚠️ SessionView 竞态红线:tap() 里判断「有没有选项」必须用同步 ref 语义(hasVisibleChoices),
   绝不能依赖 state revealed——否则手机连点会误 setFinished 把选项锁死(v4.2 已修+三重自愈);
   上班=doWork 按职业从 content/work.ts 抽加权事件,**有赚有赔**并动 mood;
